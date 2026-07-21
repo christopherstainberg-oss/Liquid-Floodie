@@ -1,0 +1,18 @@
+{
+  "name": "liquidfloodie",
+  "version": "1.2.0",
+  "private": true,
+  "description": "LiquidFloodie — whole-food liquid meal planner PWA (milk-free, gluten-free). Docker Compose + Cloudflare Pages.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "gen:ingredients": "node scripts/generate-ingredients.mjs",
+    "gen:icons": "node scripts/generate-icons.mjs",
+    "build": "node scripts/build.mjs",
+    "serve": "node scripts/build.mjs && node scripts/serve.mjs",
+    "dev": "node scripts/build.mjs && node scripts/serve.mjs",
+    "test": "node test/smoke.mjs",
+    "api": "node server/index.mjs"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,30 @@
+{
+  "id": "./index.html",
+  "name": "LiquidFloodie — Whole-Food Liquid Meals While Maintaining Dietary Restrictions",
+  "short_name": "LiquidFloodie",
+  "description": "Whole-food liquid meals while maintaining dietary restrictions. Weekly plans, grocery lists, and nutrient tracking.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#0d9488",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["health", "food", "lifestyle"],
+  "launch_handler": { "client_mode": "navigate-existing" },
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/splash-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Home", "short_name": "Home", "url": "./index.html?go=home", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Weekly plan", "short_name": "Plan", "url": "./index.html?go=plan", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Nutrients", "short_name": "Nutrients", "url": "./index.html?go=nutrients", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Grocery list", "short_name": "Grocery", "url": "./index.html?go=grocery", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gravatar.com https://secure.gravatar.com; connect-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d9488" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="LiquidFloodie — whole-food liquid meals while maintaining dietary restrictions. Weekly plans, grocery lists, and nutrient tracking." />
+  <title>LiquidFloodie — Whole-Food Liquid Meals While Maintaining Dietary Restrictions</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="LiquidFloodie" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="app-header" role="banner">
+    <div class="app-header-inner">
+      <div class="logo" aria-hidden="true">
+        <img src="icons/icon.svg" width="40" height="40" alt="" />
+      </div>
+      <div class="brand">
+        <h1 class="brandname">LiquidFloodie</h1>
+        <p class="brandsub">Whole-Food Liquid Meals While Maintaining Dietary Restrictions</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="user-chip" id="accountBtn" aria-label="Account">
+          <img id="headerAvatar" class="avatar" width="32" height="32" alt="" />
+          <span id="headerUserLabel">Sign in</span>
+        </button>
+        <button type="button" class="icon-btn" id="searchToggle" aria-label="Quick search" title="Quick search">⌕</button>
+        <button type="button" class="icon-btn" id="shareAppBtn" aria-label="Share" title="Share">↗</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="quick-search hide" id="quickSearchBar" role="search">
+    <label class="sr-only" for="globalSearch">Search ingredients and meals</label>
+    <input id="globalSearch" type="search" placeholder="Quick search ingredients…" autocomplete="off" />
+    <div id="searchResults" class="search-results" role="listbox" aria-label="Search results"></div>
+  </div>
+
+  <!-- Spec: Home | Weekly Meal Plan | Grocery List | Nutrients | Settings (+ section icons) -->
+  <nav class="tab-nav tab-nav-5" id="tabNav" aria-label="Main">
+    <button type="button" class="tab active" data-tab="home" aria-current="page">
+      <span class="t-ico" aria-hidden="true">🏠</span><span>Home</span>
+    </button>
+    <button type="button" class="tab" data-tab="plan">
+      <span class="t-ico" aria-hidden="true">📅</span><span>Weekly Plan</span>
+    </button>
+    <button type="button" class="tab" data-tab="grocery">
+      <span class="t-ico" aria-hidden="true">🛒</span><span>Grocery</span>
+    </button>
+    <button type="button" class="tab" data-tab="nutrients">
+      <span class="t-ico" aria-hidden="true">🧬</span><span>Nutrients</span>
+    </button>
+    <button type="button" class="tab" data-tab="settings">
+      <span class="t-ico" aria-hidden="true">⚙️</span><span>Settings</span>
+    </button>
+  </nav>
+
+  <main id="main" class="wrap" tabindex="-1">
+    <!-- HOME: Ingredients Library + Daily Meals -->
+    <section class="panel active" id="panel-home" aria-labelledby="home-title">
+      <div class="hero card">
+        <h2 id="home-title">Home</h2>
+        <p class="lead">Whole-Food Liquid Meals With the Ability to Track Daily Caloric Intake, Macronutrients, and Micronutrients.</p>
+        <div class="btn-row">
+          <button type="button" class="btn primary" id="goPlanBtn">Weekly Meal Plan</button>
+          <button type="button" class="btn ghost" id="goNutrientsBtn">Nutrients</button>
+          <button type="button" class="btn ghost" id="goHowToBtn">How To Blend</button>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="homeStats" aria-live="polite"></div>
+
+      <div class="card">
+        <h3>Ingredients Library</h3>
+        <p class="hint">Search and select whole foods that meet your dietary restrictions (up to 5,000 items).</p>
+        <div class="icon-legend" id="iconLegend" aria-label="Ingredient icon legend"></div>
+        <div class="form-grid">
+          <label>
+            Search
+            <input type="search" id="libSearch" placeholder="e.g. spinach, broth, berry…" />
+          </label>
+          <label>
+            Category
+            <select id="libCategory">
+              <option value="">All</option>
+              <option value="base">Bases (Liquid)</option>
+              <option value="fruit">Fruit</option>
+              <option value="vegetable">Vegetable</option>
+              <option value="herb">Herb</option>
+              <option value="spice">Spice</option>
+              <option value="nut-seed">Nuts &amp; Seeds</option>
+              <option value="legume">Legume</option>
+              <option value="grain">Grain (GF)</option>
+              <option value="protein">Protein</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+        </div>
+        <p class="meta" id="libMeta"></p>
+        <div id="libOutput" class="ing-grid" role="list"></div>
+      </div>
+
+      <div class="card" id="dailyMealsCard">
+        <h3>Daily Meals</h3>
+        <p class="hint">Today’s meals from your weekly plan. Open a meal for step-by-step blend instructions.</p>
+        <div id="dailyMealsOutput"></div>
+      </div>
+
+      <div class="card" id="howtoCard">
+        <h3>How To Create A Liquid Meal</h3>
+        <ol class="steps-list" id="globalHowTo">
+          <li><strong>Gather</strong> a liquid base (water, broth, or juice) and 2–5 whole-food add-ins.</li>
+          <li><strong>Wash &amp; Prep</strong> produce into blender-friendly pieces.</li>
+          <li><strong>Base First</strong> — pour liquid into the blender jar.</li>
+          <li><strong>Soft Then Dense</strong> — add soft fruit/veg, then denser items.</li>
+          <li><strong>Blend In Stages</strong> — low, then high until smooth.</li>
+          <li><strong>Taste, Serve, Store</strong> — drink fresh; refrigerate leftovers ≤24h.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- WEEKLY MEAL PLAN -->
+    <section class="panel" id="panel-plan" aria-labelledby="plan-title" hidden>
+      <div class="card">
+        <h2 id="plan-title">Weekly Meal Plan</h2>
+        <p class="hint">5-day liquid meal plan · ≤2 meals/day · 2–5 whole-food add-ins · endless variations · step-by-step instructions</p>
+
+        <div class="form-grid">
+          <label>
+            Meals per day
+            <select id="mealsPerDay">
+              <option value="1">1 meal</option>
+              <option value="2" selected>2 meals</option>
+            </select>
+          </label>
+          <label>
+            Ingredients per smoothie
+            <select id="ingredientCount">
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="restrictMilk" checked />
+            No milk / dairy
+          </label>
+          <label class="check">
+            <input type="checkbox" id="restrictGluten" checked />
+            No gluten
+          </label>
+        </div>
+
+        <label class="block-label">
+          Favorite ingredients (optional — max 5)
+          <input type="search" id="prefSearch" placeholder="Search to pin favorites…" />
+        </label>
+        <div id="prefResults" class="chip-pick"></div>
+        <div id="prefSelected" class="chip-row" aria-live="polite"></div>
+
+        <div class="btn-row">
+          <button type="button" class="btn primary" id="generatePlanBtn">Generate plan</button>
+          <button type="button" class="btn" id="rotatePlanBtn">Rotate meals</button>
+          <button type="button" class="btn ghost" id="sharePlanBtn">Share plan</button>
+        </div>
+      </div>
+      <div id="planOutput" aria-live="polite"></div>
+    </section>
+
+    <!-- GROCERY -->
+    <section class="panel" id="panel-grocery" aria-labelledby="grocery-title" hidden>
+      <div class="card">
+        <h2 id="grocery-title">Grocery List</h2>
+        <p class="hint">Built from your weekly meal plan. Check items as you shop.</p>
+        <div class="btn-row">
+          <button type="button" class="btn primary" id="rebuildGroceryBtn">Rebuild from plan</button>
+          <button type="button" class="btn ghost" id="exportGroceryBtn">Export list</button>
+          <button type="button" class="btn ghost" id="shareGroceryBtn">Share</button>
+        </div>
+        <div id="thirdPartyGrocery" class="link-row"></div>
+      </div>
+      <div id="groceryOutput" aria-live="polite"></div>
+    </section>
+
+    <!-- NUTRIENTS: macros, micros, calories, water, fiber -->
+    <section class="panel" id="panel-nutrients" aria-labelledby="nutrients-title" hidden>
+      <div class="card">
+        <h2 id="nutrients-title">Nutrients</h2>
+        <p class="hint">Track calories, macronutrients, micronutrients, water, and fiber from your meal plan plus manual water/fiber logs.</p>
+        <label>
+          View day
+          <select id="nutrientDaySelect"></select>
+        </label>
+      </div>
+
+      <div class="card">
+        <h3>Calories &amp; macros</h3>
+        <div id="macroBars" class="nutrient-bars"></div>
+      </div>
+
+      <div class="card">
+        <h3>Fiber</h3>
+        <div id="fiberBar" class="nutrient-bars"></div>
+        <div class="form-grid">
+          <label>Extra fiber logged (g)
+            <input type="number" id="extraFiber" min="0" step="0.5" value="0" />
+          </label>
+        </div>
+        <button type="button" class="btn" id="saveFiberBtn">Save fiber log</button>
+      </div>
+
+      <div class="card">
+        <h3>Water intake</h3>
+        <p class="hint">Includes estimated water from liquid meals plus water you log.</p>
+        <div id="waterBar" class="nutrient-bars"></div>
+        <div class="btn-row">
+          <button type="button" class="btn primary" id="waterPlus250">+250 ml</button>
+          <button type="button" class="btn" id="waterPlus500">+500 ml</button>
+          <button type="button" class="btn ghost" id="waterReset">Reset log</button>
+        </div>
+        <label>Logged water (ml)
+          <input type="number" id="waterLogged" min="0" step="50" value="0" />
+        </label>
+        <button type="button" class="btn" id="saveWaterBtn">Save water log</button>
+      </div>
+
+      <div class="card">
+        <h3>Micronutrients</h3>
+        <div id="microBars" class="nutrient-bars"></div>
+      </div>
+
+      <div class="card">
+        <h3>Daily goals</h3>
+        <p class="hint">Customize targets for calories, macros, fiber, and water.</p>
+        <div class="form-grid" id="goalsForm"></div>
+        <button type="button" class="btn primary" id="saveGoalsBtn">Save goals</button>
+      </div>
+
+      <div class="card">
+        <h3>Plan overview</h3>
+        <div id="planNutritionOverview" class="meta"></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS: account, gamification, analytics, scheduling, import/export, delete/recover -->
+    <section class="panel" id="panel-settings" aria-labelledby="settings-title" hidden>
+      <div class="card">
+        <h2 id="settings-title">Settings</h2>
+
+        <h3>Account</h3>
+        <p class="hint">Secure local login, password recovery, and Gravatar profile picture.</p>
+        <div id="accountPanel"></div>
+
+        <h3>Gamification</h3>
+        <p class="hint">Rewards, badges, challenges, community, and events.</p>
+        <label>
+          Display name
+          <input type="text" id="displayName" maxlength="24" />
+        </label>
+        <div class="btn-row">
+          <button type="button" class="btn ghost" id="shareProgressBtn">Share achievements</button>
+        </div>
+        <div id="gameOutput"></div>
+
+        <h3>Job scheduling</h3>
+        <p class="hint">Automate reminders, auto-rotate, and review schedule reports.</p>
+        <label class="check"><input type="checkbox" id="schedEnabled" /> Enable scheduled reminder</label>
+        <div class="form-grid">
+          <label>Hour <input type="number" id="schedHour" min="0" max="23" value="8" /></label>
+          <label>Minute <input type="number" id="schedMinute" min="0" max="59" value="0" /></label>
+        </div>
+        <label class="check"><input type="checkbox" id="schedAutoRotate" /> Auto-rotate meal plan when reminder fires</label>
+        <label class="check"><input type="checkbox" id="notifEnabled" /> Web notifications</label>
+        <button type="button" class="btn" id="saveScheduleBtn">Save schedule</button>
+        <div id="scheduleReport" class="meta"></div>
+
+        <h3>Import &amp; export</h3>
+        <div class="btn-row">
+          <button type="button" class="btn primary" id="exportAllBtn">Export backup JSON</button>
+          <label class="btn ghost file-btn">Import backup<input type="file" id="importFile" accept="application/json,.json" hidden /></label>
+        </div>
+
+        <h3>Deletion &amp; recovery</h3>
+        <div class="btn-row">
+          <button type="button" class="btn danger" id="deletePlanBtn">Delete meal plan</button>
+          <button type="button" class="btn danger" id="deleteGroceryBtn">Delete grocery list</button>
+          <button type="button" class="btn danger" id="deleteAllBtn">Delete all user data</button>
+        </div>
+        <div id="trashList"></div>
+
+        <h3>Analytics</h3>
+        <div id="analyticsBox" class="meta"></div>
+
+        <h3>Logging &amp; monitoring</h3>
+        <div class="btn-row">
+          <button type="button" class="btn ghost" id="refreshLogsBtn">Refresh logs</button>
+          <button type="button" class="btn danger" id="clearLogsBtn">Clear logs</button>
+        </div>
+        <pre id="logsBox" class="log-box" aria-live="polite"></pre>
+
+        <h3>Third-party integrations</h3>
+        <div id="thirdPartySettings" class="link-row"></div>
+
+        <h3>Feedback</h3>
+        <label>Your feedback<textarea id="feedbackText" rows="3" placeholder="Ideas, bugs, meal requests…"></textarea></label>
+        <button type="button" class="btn" id="sendFeedbackBtn">Save feedback locally</button>
+
+        <h3>Security &amp; handoff</h3>
+        <div id="securityBox" class="meta"></div>
+        <div class="btn-row">
+          <button type="button" class="btn ghost" id="exportHandoffBtn">Export handoff summary</button>
+        </div>
+        <p class="meta" id="aboutMeta"></p>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal hide" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="modal-card">
+      <button type="button" class="modal-close" id="authClose" aria-label="Close">×</button>
+      <h2 id="authTitle">Account</h2>
+      <div class="auth-tabs" role="tablist">
+        <button type="button" class="auth-tab active" data-auth="login">Login</button>
+        <button type="button" class="auth-tab" data-auth="register">Register</button>
+        <button type="button" class="auth-tab" data-auth="recover">Password recovery</button>
+      </div>
+
+      <form id="formLogin" class="auth-form">
+        <label>Email <input type="email" id="loginEmail" required autocomplete="username" /></label>
+        <label>Password <input type="password" id="loginPassword" required autocomplete="current-password" minlength="8" /></label>
+        <button type="submit" class="btn primary">Sign in</button>
+      </form>
+
+      <form id="formRegister" class="auth-form hide">
+        <label>Email <input type="email" id="regEmail" required autocomplete="username" /></label>
+        <label>Display name <input type="text" id="regName" maxlength="40" autocomplete="nickname" /></label>
+        <label>Password <input type="password" id="regPassword" required autocomplete="new-password" minlength="8" /></label>
+        <label>Security question <select id="regQuestion"></select></label>
+        <label>Security answer <input type="text" id="regAnswer" required autocomplete="off" /></label>
+        <button type="submit" class="btn primary">Create account</button>
+        <p class="meta">Passwords hashed with PBKDF2 (120k iterations). Accounts stay on this device.</p>
+      </form>
+
+      <form id="formRecover" class="auth-form hide">
+        <label>Email <input type="email" id="recEmail" required /></label>
+        <button type="button" class="btn ghost" id="loadQuestionBtn">Load my security question</button>
+        <p class="meta" id="recQuestion">—</p>
+        <label>Security answer <input type="text" id="recAnswer" autocomplete="off" /></label>
+        <label>New password <input type="password" id="recPassword" minlength="8" autocomplete="new-password" /></label>
+        <button type="submit" class="btn primary">Reset password</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

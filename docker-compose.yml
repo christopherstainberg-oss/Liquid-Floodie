@@ -1,0 +1,33 @@
+# LiquidFloodie — Portainer Stack / Docker Compose
+# Portainer → Stacks → Add stack (Web editor), or:
+#   docker compose up -d
+#
+# Image is published to GitHub Container Registry by the
+# "Publish Docker image to GHCR" workflow on every push to main.
+#
+# Browse: http://<host-ip>:8090
+services:
+  liquidfloodie:
+    image: ghcr.io/christopherstainberg-oss/liquid-floodie:latest
+    # Local build fallback (when not using GHCR):
+    # build: .
+    container_name: liquidfloodie
+    ports:
+      - "8090:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Auto-update: pulls a fresh ghcr.io/.../liquid-floodie:latest and recreates
+  # the container within ~5 min of each new build.
+  watchtower:
+    image: containrrr/watchtower
+    container_name: liquidfloodie-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --cleanup --include-restarting --interval 300 liquidfloodie
