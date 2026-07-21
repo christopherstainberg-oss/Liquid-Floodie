@@ -116,6 +116,76 @@ export function nutritionForMeal(meal) {
   return roundTotals(total);
 }
 
+/** Per-ingredient nutrition for a meal (totals + breakdown) */
+export function nutritionBreakdownForMeal(meal) {
+  const parts = [meal?.base, ...(meal?.ingredients || [])].filter(Boolean);
+  const byIngredient = parts.map((item) => ({
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    icon: item.icon,
+    role: item.category === "base" ? "base" : "add-in",
+    nutrition: nutritionForItem(item),
+  }));
+  const total = emptyTotals();
+  for (const row of byIngredient) addNutrition(total, row.nutrition);
+  return {
+    total: roundTotals(total),
+    byIngredient: byIngredient.map((row) => ({
+      ...row,
+      nutrition: {
+        calories: Math.round(row.nutrition.calories),
+        protein: Math.round(row.nutrition.protein * 10) / 10,
+        carbs: Math.round(row.nutrition.carbs * 10) / 10,
+        fat: Math.round(row.nutrition.fat * 10) / 10,
+        fiber: Math.round(row.nutrition.fiber * 10) / 10,
+        waterMl: Math.round(row.nutrition.waterMl || 0),
+        micros: Object.fromEntries(
+          Object.entries(row.nutrition.micros || {}).map(([k, v]) => [k, Math.round(v * 10) / 10])
+        ),
+      },
+    })),
+  };
+}
+
+/** Day totals + per-meal and per-ingredient breakdown */
+export function nutritionBreakdownForDay(day) {
+  const meals = [];
+  const total = emptyTotals();
+  const ingredientMap = new Map();
+
+  for (const meal of day?.meals || []) {
+    const breakdown = nutritionBreakdownForMeal(meal);
+    meals.push({
+      mealId: meal.id,
+      title: meal.title,
+      slot: meal.slot,
+      total: breakdown.total,
+      byIngredient: breakdown.byIngredient,
+    });
+    addNutrition(total, { ...breakdown.total, micros: breakdown.total.micros });
+    for (const row of breakdown.byIngredient) {
+      const prev = ingredientMap.get(row.id) || {
+        id: row.id,
+        name: row.name,
+        category: row.category,
+        icon: row.icon,
+        nutrition: emptyTotals(),
+      };
+      addNutrition(prev.nutrition, row.nutrition);
+      ingredientMap.set(row.id, prev);
+    }
+  }
+
+  return {
+    total: roundTotals(total),
+    meals,
+    byIngredient: [...ingredientMap.values()]
+      .map((row) => ({ ...row, nutrition: roundTotals(row.nutrition) }))
+      .sort((a, b) => b.nutrition.calories - a.nutrition.calories),
+  };
+}
+
 export function nutritionForDay(day) {
   const total = emptyTotals();
   for (const meal of day?.meals || []) {

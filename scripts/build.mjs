@@ -78,6 +78,15 @@ cpSync(join(root, "data", "ingredients.js"), join(dist, "data", "ingredients.js"
 if (existsSync(join(root, "public"))) {
   cpSync(join(root, "public"), dist, { recursive: true });
 }
+// Ensure liquid-diet background photo is present for Pages/Docker
+const bgJpg = join(root, "public", "bg-liquid-diet.jpg");
+if (existsSync(bgJpg)) {
+  writeFileSync(join(dist, "bg-liquid-diet.jpg"), readFileSync(bgJpg));
+}
+const bgAlt = join(root, "public", "The-Liquid-Diet.jpg");
+if (existsSync(bgAlt)) {
+  writeFileSync(join(dist, "The-Liquid-Diet.jpg"), readFileSync(bgAlt));
+}
 
 // API docs stub for Cloudflare / Docker static hosting
 writeFileSync(

@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gravatar.com https://secure.gravatar.com; connect-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0d9488" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#c2410c" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#431407" media="(prefers-color-scheme: dark)" />
   <meta name="color-scheme" content="light dark" />
   <meta name="description" content="LiquidFloodie — whole-food liquid meals while maintaining dietary restrictions. Weekly plans, grocery lists, and nutrient tracking." />
   <title>LiquidFloodie — Whole-Food Liquid Meals While Maintaining Dietary Restrictions</title>
@@ -83,7 +83,7 @@
 
       <div class="card">
         <h3>Ingredients Library</h3>
-        <p class="hint">Search and select whole foods that meet your dietary restrictions (up to 5,000 items).</p>
+        <p class="hint">Search and select whole foods that meet your dietary restrictions.</p>
         <div class="icon-legend" id="iconLegend" aria-label="Ingredient icon legend"></div>
         <div class="form-grid">
           <label>
@@ -107,14 +107,19 @@
             </select>
           </label>
         </div>
-        <p class="meta" id="libMeta"></p>
         <div id="libOutput" class="ing-grid" role="list"></div>
       </div>
 
       <div class="card" id="dailyMealsCard">
         <h3>Daily Meals</h3>
-        <p class="hint">Today’s meals from your weekly plan. Open a meal for step-by-step blend instructions.</p>
+        <p class="hint">Your weekly and daily plans are generated automatically. Rotate any meal if you want a new variation. Nutrition totals follow today’s meals.</p>
         <div id="dailyMealsOutput"></div>
+      </div>
+
+      <div class="card" id="dailyNutritionCard">
+        <h3>Today’s Nutrition</h3>
+        <p class="hint">Calories, macros, and micros from today’s liquid meals — with per-ingredient breakdown.</p>
+        <div id="dailyNutritionOutput" aria-live="polite"></div>
       </div>
 
       <div class="card" id="howtoCard">
@@ -138,14 +143,14 @@
 
         <div class="form-grid">
           <label>
-            Meals per day
+            Meals Per Day
             <select id="mealsPerDay">
-              <option value="1">1 meal</option>
-              <option value="2" selected>2 meals</option>
+              <option value="1">1 Meal</option>
+              <option value="2" selected>2 Meals</option>
             </select>
           </label>
           <label>
-            Ingredients per smoothie
+            Ingredients Per Smoothie
             <select id="ingredientCount">
               <option value="2">2</option>
               <option value="3" selected>3</option>
@@ -155,27 +160,65 @@
           </label>
           <label class="check">
             <input type="checkbox" id="restrictMilk" checked />
-            No milk / dairy
+            No Milk / Dairy
           </label>
           <label class="check">
             <input type="checkbox" id="restrictGluten" checked />
-            No gluten
+            No Gluten
           </label>
         </div>
+        <p class="meta">These dietary restriction checkboxes sync with <strong>Settings</strong>.</p>
 
         <label class="block-label">
-          Favorite ingredients (optional — max 5)
+          Favorite Ingredients (Optional — Max 5)
           <input type="search" id="prefSearch" placeholder="Search to pin favorites…" />
         </label>
         <div id="prefResults" class="chip-pick"></div>
         <div id="prefSelected" class="chip-row" aria-live="polite"></div>
 
         <div class="btn-row">
-          <button type="button" class="btn primary" id="generatePlanBtn">Generate plan</button>
-          <button type="button" class="btn" id="rotatePlanBtn">Rotate meals</button>
-          <button type="button" class="btn ghost" id="sharePlanBtn">Share plan</button>
+          <button type="button" class="btn" id="rotatePlanBtn">Rotate All Meals</button>
+          <button type="button" class="btn ghost" id="sharePlanBtn">Share Plan</button>
+        </div>
+        <p class="meta">Weekly and daily meal plans are created automatically in the background.</p>
+      </div>
+
+      <!-- Create Your Own Meal -->
+      <div class="card custom-meal-card">
+        <h2 id="custom-meal-title">Create Your Own Meal</h2>
+        <p class="hint">Name your blend, pick a liquid base, search whole-food ingredients, and add 2–5 items that match your dietary restrictions.</p>
+
+        <label class="block-label">
+          Meal Name
+          <input type="text" id="customMealName" maxlength="60" placeholder="e.g. Garden Green Glow" autocomplete="off" />
+        </label>
+
+        <label class="block-label">
+          Liquid Base
+          <select id="customMealBase"></select>
+        </label>
+
+        <label class="block-label">
+          Search Ingredients
+          <input type="search" id="customIngSearch" placeholder="Search spinach, berry, ginger…" autocomplete="off" />
+        </label>
+        <div id="customIngResults" class="chip-pick search-pick" role="listbox" aria-label="Ingredient search results"></div>
+
+        <h3 class="custom-subhead">Ingredients In This Meal <span class="meta" id="customIngCount">(0 / 5)</span></h3>
+        <div id="customIngSelected" class="chip-row" aria-live="polite"></div>
+
+        <div class="btn-row">
+          <button type="button" class="btn primary" id="saveCustomMealBtn">Save Custom Meal</button>
+          <button type="button" class="btn" id="addCustomToPlanBtn">Save &amp; Add To Plan (Day 1)</button>
+          <button type="button" class="btn ghost" id="clearCustomMealBtn">Clear Builder</button>
         </div>
       </div>
+
+      <div class="card">
+        <h3>My Custom Meals</h3>
+        <div id="customMealsList" aria-live="polite"></div>
+      </div>
+
       <div id="planOutput" aria-live="polite"></div>
     </section>
 
@@ -259,6 +302,30 @@
       <div class="card">
         <h2 id="settings-title">Settings</h2>
 
+        <h3>Dietary Restrictions</h3>
+        <p class="hint">Update what you avoid. Checked items are blocked from meal generation, the ingredients library, and custom meals. Changes save on this device.</p>
+        <div class="restriction-grid" id="dietaryRestrictionsForm">
+          <label class="check restriction-item">
+            <input type="checkbox" id="settingsRestrictMilk" />
+            <span>
+              <strong>No Milk / Dairy</strong>
+              <span class="meta">Blocks milk, cream, cheese, yogurt, and other dairy ingredients.</span>
+            </span>
+          </label>
+          <label class="check restriction-item">
+            <input type="checkbox" id="settingsRestrictGluten" />
+            <span>
+              <strong>No Gluten</strong>
+              <span class="meta">Blocks wheat, barley, rye, and other gluten-containing ingredients.</span>
+            </span>
+          </label>
+        </div>
+        <p class="meta" id="restrictionsStatus" aria-live="polite"></p>
+        <div class="btn-row">
+          <button type="button" class="btn primary" id="saveRestrictionsBtn">Save Dietary Restrictions</button>
+          <button type="button" class="btn ghost" id="resetRestrictionsBtn">Reset To Defaults</button>
+        </div>
+
         <h3>Account</h3>
         <p class="hint">Secure local login, password recovery, and Gravatar profile picture.</p>
         <div id="accountPanel"></div>
@@ -327,39 +394,50 @@
     </section>
   </main>
 
-  <div class="modal hide" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-    <div class="modal-card">
+  <!-- Welcome: continue without account, or login / register -->
+  <div class="modal auth-gate hide" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="modal-card auth-gate-card">
       <button type="button" class="modal-close" id="authClose" aria-label="Close">×</button>
-      <h2 id="authTitle">Account</h2>
-      <div class="auth-tabs" role="tablist">
-        <button type="button" class="auth-tab active" data-auth="login">Login</button>
-        <button type="button" class="auth-tab" data-auth="register">Register</button>
-        <button type="button" class="auth-tab" data-auth="recover">Password recovery</button>
+      <div class="auth-brand">
+        <img src="icons/icon.svg" width="56" height="56" alt="" class="auth-logo" />
+        <h2 id="authTitle">Welcome</h2>
+        <p class="auth-tagline">Whole-Food Liquid Meals While Maintaining Dietary Restrictions</p>
       </div>
 
-      <form id="formLogin" class="auth-form">
+      <div class="guest-cta" id="guestCta">
+        <button type="button" class="btn primary" id="continueGuestBtn">Continue Without Account</button>
+        <p class="meta" style="text-align:center;margin:10px 0 0">Use the full app now. You can create an account later from Sign In.</p>
+      </div>
+
+      <div class="auth-tabs" role="tablist">
+        <button type="button" class="auth-tab" data-auth="login">Login</button>
+        <button type="button" class="auth-tab active" data-auth="register">Register</button>
+        <button type="button" class="auth-tab" data-auth="recover">Password Recovery</button>
+      </div>
+
+      <form id="formLogin" class="auth-form hide">
         <label>Email <input type="email" id="loginEmail" required autocomplete="username" /></label>
         <label>Password <input type="password" id="loginPassword" required autocomplete="current-password" minlength="8" /></label>
-        <button type="submit" class="btn primary">Sign in</button>
+        <button type="submit" class="btn primary">Sign In</button>
       </form>
 
-      <form id="formRegister" class="auth-form hide">
+      <form id="formRegister" class="auth-form">
         <label>Email <input type="email" id="regEmail" required autocomplete="username" /></label>
-        <label>Display name <input type="text" id="regName" maxlength="40" autocomplete="nickname" /></label>
+        <label>Display Name <input type="text" id="regName" maxlength="40" autocomplete="nickname" /></label>
         <label>Password <input type="password" id="regPassword" required autocomplete="new-password" minlength="8" /></label>
-        <label>Security question <select id="regQuestion"></select></label>
-        <label>Security answer <input type="text" id="regAnswer" required autocomplete="off" /></label>
-        <button type="submit" class="btn primary">Create account</button>
-        <p class="meta">Passwords hashed with PBKDF2 (120k iterations). Accounts stay on this device.</p>
+        <label>Security Question <select id="regQuestion"></select></label>
+        <label>Security Answer <input type="text" id="regAnswer" required autocomplete="off" /></label>
+        <button type="submit" class="btn primary">Create Account</button>
+        <p class="meta">Passwords are hashed with PBKDF2 (120k iterations). Accounts stay on this device.</p>
       </form>
 
       <form id="formRecover" class="auth-form hide">
         <label>Email <input type="email" id="recEmail" required /></label>
-        <button type="button" class="btn ghost" id="loadQuestionBtn">Load my security question</button>
+        <button type="button" class="btn ghost" id="loadQuestionBtn">Load My Security Question</button>
         <p class="meta" id="recQuestion">—</p>
-        <label>Security answer <input type="text" id="recAnswer" autocomplete="off" /></label>
-        <label>New password <input type="password" id="recPassword" minlength="8" autocomplete="new-password" /></label>
-        <button type="submit" class="btn primary">Reset password</button>
+        <label>Security Answer <input type="text" id="recAnswer" autocomplete="off" /></label>
+        <label>New Password <input type="password" id="recPassword" minlength="8" autocomplete="new-password" /></label>
+        <button type="submit" class="btn primary">Reset Password</button>
       </form>
     </div>
   </div>

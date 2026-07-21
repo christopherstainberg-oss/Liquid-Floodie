@@ -1,30 +1,56 @@
 :root {
-  --bg: #f0fdfa;
-  --bg2: #ffffff;
-  --ink: #0f172a;
-  --muted: #475569;
-  --line: #ccfbf1;
-  --brand: #0d9488;
-  --brand2: #84cc16;
-  --accent: #f97316;
-  --danger: #dc2626;
-  --shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+  /* Food-centric harvest palette: tomato, citrus, avocado, cream */
+  --bg: #fff7ed;
+  --bg2: #fffbeb;
+  --ink: #431407;
+  --muted: #9a3412;
+  --line: #fed7aa;
+  --brand: #ea580c;
+  --brand2: #65a30d;
+  --accent: #e11d48;
+  --berry: #be123c;
+  --honey: #d97706;
+  --cream: #fff7ed;
+  --danger: #b91c1c;
+  --shadow: 0 10px 30px rgba(120, 53, 15, 0.12);
   --radius: 18px;
   --nav-h: 68px;
   --header-h: 68px;
   --max: 720px;
   --page-pad: 16px;
+  /* The-Liquid-Diet.jpg — food-centric photo background for mobile PWA */
+  --bg-image: url("bg-liquid-diet.jpg");
+  --bg-scrim: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg) 72%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 58%, transparent) 35%,
+    color-mix(in srgb, var(--bg) 78%, transparent) 100%
+  );
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0b1220;
-    --bg2: #141e2e;
-    --ink: #f1f5f9;
-    --muted: #94a3b8;
-    --line: #2a3a4f;
-    --shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+    --bg: #1c1008;
+    --bg2: #2a1810;
+    --ink: #fff7ed;
+    --muted: #fdba74;
+    --line: #7c2d12;
+    --brand: #fb923c;
+    --brand2: #a3e635;
+    --accent: #fb7185;
+    --berry: #f43f5e;
+    --honey: #fbbf24;
+    --cream: #292524;
+    --danger: #f87171;
+    --shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    --bg-image: url("bg-liquid-diet.jpg");
+    --bg-scrim: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg) 82%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 68%, transparent) 40%,
+      color-mix(in srgb, var(--bg) 88%, transparent) 100%
+    );
   }
 }
 
@@ -39,13 +65,42 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
+  min-height: -webkit-fill-available;
   padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 20px);
   line-height: 1.5;
   color: var(--ink);
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, color-mix(in srgb, var(--brand) 18%, transparent), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 100% 100%, color-mix(in srgb, var(--brand2) 12%, transparent), transparent 50%),
-    var(--bg);
+  background-color: var(--bg);
+  /* Photo + readability scrim — sized for mobile PWA viewport */
+  background-image: var(--bg-scrim), var(--bg-image);
+  background-size: cover, cover;
+  background-position: center center, center center;
+  background-repeat: no-repeat, no-repeat;
+  /* scroll is more reliable on iOS PWAs than fixed */
+  background-attachment: scroll, scroll;
+}
+
+/* Mobile PWA: keep photo framed to screen, avoid heavy fixed attachment */
+@media (max-width: 720px) {
+  body {
+    background-size: cover, cover;
+    background-position: center 30%, center 30%; /* favor upper subject on tall phones */
+  }
+}
+
+/* Prefer fixed fill only on larger screens where it performs well */
+@media (min-width: 721px) {
+  body {
+    background-attachment: fixed, fixed;
+    background-position: center center, center center;
+  }
+}
+
+/* Very small phones: ensure cover still fills without letterboxing */
+@media (max-width: 380px) {
+  body {
+    background-size: cover, cover;
+    background-position: center top, center top;
+  }
 }
 
 /* Shared centered column */
@@ -226,7 +281,7 @@ label textarea:focus {
   left: 50%;
   bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
-  z-index: 50;
+  z-index: 90;
   width: min(var(--max), calc(100% - 20px));
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -239,6 +294,7 @@ label textarea:focus {
   border: 1px solid var(--line);
   border-radius: 20px;
   box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+  pointer-events: auto;
 }
 
 .tab {
@@ -254,6 +310,10 @@ label textarea:focus {
   cursor: pointer;
   border-radius: 14px;
   padding: 6px 2px;
+  min-height: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;
   transition: background 0.15s ease, color 0.15s ease;
 }
 .tab .t-ico { font-size: 1.15rem; line-height: 1; }
@@ -289,7 +349,9 @@ label textarea:focus {
 
 /* ---------- Cards ---------- */
 .card {
-  background: var(--bg2);
+  background: color-mix(in srgb, var(--bg2) 94%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 20px 20px;
@@ -302,9 +364,69 @@ label textarea:focus {
   text-align: center;
   padding: 28px 22px;
   background:
-    radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--brand2) 30%, transparent), transparent 55%),
-    radial-gradient(100% 80% at 50% 100%, color-mix(in srgb, var(--brand) 20%, transparent), transparent 55%),
+    radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--honey) 35%, transparent), transparent 55%),
+    radial-gradient(100% 80% at 20% 100%, color-mix(in srgb, var(--brand2) 28%, transparent), transparent 55%),
+    radial-gradient(90% 70% at 90% 80%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 50%),
     var(--bg2);
+  border-color: color-mix(in srgb, var(--brand) 35%, var(--line));
+}
+
+.custom-meal-card {
+  border-color: color-mix(in srgb, var(--brand2) 40%, var(--line));
+  background:
+    radial-gradient(100% 80% at 100% 0%, color-mix(in srgb, var(--brand2) 16%, transparent), transparent 50%),
+    var(--bg2);
+}
+.custom-subhead {
+  margin: 14px 0 6px;
+  font-size: 1rem;
+}
+.search-pick {
+  max-height: 160px;
+  overflow: auto;
+  padding: 4px 0;
+}
+.custom-meal-saved {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  margin: 8px 0;
+  background: color-mix(in srgb, var(--bg) 45%, var(--bg2));
+  text-align: left;
+}
+.custom-meal-saved h4 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.restriction-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0;
+}
+.restriction-item {
+  align-items: flex-start !important;
+  gap: 12px !important;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg) 40%, var(--bg2));
+  font-weight: 500 !important;
+}
+.restriction-item input {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.restriction-item strong {
+  display: block;
+  margin-bottom: 2px;
+}
+.restriction-item .meta {
+  display: block;
+  font-weight: 400;
 }
 .hero h2 {
   font-size: 1.55rem;
@@ -365,9 +487,10 @@ h3 { font-size: 1.1rem; margin-bottom: 8px; }
   outline-offset: 2px;
 }
 .btn.primary {
-  background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand2) 70%, var(--brand)));
-  color: #042f2e;
+  background: linear-gradient(135deg, var(--brand), var(--honey));
+  color: #fff7ed;
   border-color: transparent;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
 }
 .btn.ghost { background: transparent; }
 .btn.danger {
@@ -452,6 +575,51 @@ label.check {
   background: color-mix(in srgb, var(--bg) 55%, var(--bg2));
   text-align: left;
 }
+.meal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.meal-actions { flex-shrink: 0; }
+.meal-actions .btn { padding: 8px 12px; font-size: 0.8rem; }
+.table-wrap { overflow-x: auto; margin: 8px 0; }
+.nutrient-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.nutrient-table th,
+.nutrient-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 6px 8px;
+  text-align: left;
+}
+.nutrient-table .num,
+.nutrient-table th:not(:first-child),
+.nutrient-table td:not(:first-child) { text-align: right; }
+.nutrient-table tfoot th { font-weight: 700; }
+.nutrient-total-card { margin-bottom: 12px; }
+.nutrient-stats { margin: 10px 0 14px; }
+.nutrient-ing,
+.nutrient-meal,
+.meal-nut-breakdown {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  background: color-mix(in srgb, var(--bg) 40%, var(--bg2));
+}
+.nutrient-ing summary,
+.nutrient-meal summary,
+.meal-nut-breakdown summary {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-weight: 600;
+}
+.nutrient-ing-body { margin-top: 8px; }
 .meal .slot {
   font-size: 0.72rem;
   font-weight: 700;
@@ -730,11 +898,11 @@ label.check {
   text-align: left;
 }
 
-/* ---------- Modal (centered) ---------- */
+/* ---------- Modal / Login gate (centered) ---------- */
 .modal {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 200;
   background: rgba(15, 23, 42, 0.55);
   display: flex;
   align-items: center;
@@ -742,6 +910,23 @@ label.check {
   padding: 16px;
 }
 .modal.hide { display: none !important; }
+
+/* Full-screen login gate on first visit */
+.modal.auth-gate {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, color-mix(in srgb, var(--brand) 28%, transparent), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, color-mix(in srgb, var(--brand2) 18%, transparent), transparent 50%),
+    var(--bg);
+  backdrop-filter: none;
+}
+body.auth-locked .app-header,
+body.auth-locked .tab-nav,
+body.auth-locked .wrap,
+body.auth-locked .quick-search {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .modal-card {
   position: relative;
   width: min(420px, 100%);
@@ -754,6 +939,32 @@ label.check {
   max-height: 90dvh;
   overflow: auto;
   text-align: left;
+}
+.auth-gate-card {
+  width: min(440px, 100%);
+  padding: 28px 24px 24px;
+}
+.auth-brand {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.auth-logo {
+  display: block;
+  margin: 0 auto 12px;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--brand) 30%, transparent);
+}
+.auth-brand h2 {
+  margin: 0 0 6px;
+  text-align: center;
+}
+.auth-tagline {
+  margin: 0 auto;
+  max-width: 28em;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.35;
+  text-align: center;
 }
 .modal-card h2 { text-align: center; }
 .modal-close {
@@ -793,6 +1004,30 @@ label.check {
 .auth-form .btn {
   margin-top: 8px;
   width: 100%;
+}
+.guest-cta {
+  margin: 0 0 16px;
+  padding: 14px 12px;
+  border: 1px dashed color-mix(in srgb, var(--brand) 45%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--brand2) 12%, var(--bg2));
+  text-align: center;
+}
+.guest-cta .btn {
+  width: 100%;
+  max-width: 340px;
+}
+
+/* Bottom nav: ensure always clickable above content */
+.tab-nav {
+  z-index: 90 !important;
+  pointer-events: auto;
+}
+.tab-nav .tab {
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 48px;
 }
 
 /* ---------- Nutrient bars ---------- */

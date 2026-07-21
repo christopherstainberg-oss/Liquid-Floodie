@@ -17,6 +17,8 @@ const DEFAULTS = {
   preferredIds: [],
   mealPlan: null,
   groceryList: null,
+  /** User-built named meals (base + 2–5 ingredients) */
+  customMeals: [],
   schedule: {
     enabled: false,
     hour: 8,

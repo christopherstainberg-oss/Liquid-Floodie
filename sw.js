@@ -1,5 +1,5 @@
 /* LiquidFloodie service worker — offline-first shell + data */
-const SHELL_VERSION = "v6";
+const SHELL_VERSION = "v18";
 const SHELL_CACHE = "liquidfloodie-shell-" + SHELL_VERSION;
 const SHELL_ASSETS = [
   "./",
@@ -7,6 +7,7 @@ const SHELL_ASSETS = [
   "./styles.css",
   "./app.bundle.js",
   "./manifest.webmanifest",
+  "./bg-liquid-diet.jpg",
   "./icons/icon.svg",
   "./icons/icon-180.png",
   "./icons/icon-192.png",

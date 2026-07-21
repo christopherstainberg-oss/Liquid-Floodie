@@ -88,6 +88,36 @@ const planNut = nutrition.nutritionForPlan(plan);
 assert(planNut.byDay.length === 5, "nutrition by day for plan");
 assert(planNut.total.calories > 0, "plan total calories");
 
+const base = INGREDIENT_DB.bases[0];
+const adds = INGREDIENT_DB.ingredients.filter((i) => i.category !== "base").slice(0, 3);
+const custom = engine.buildCustomMeal({
+  name: "Test Garden Blend",
+  base,
+  ingredients: adds,
+  restrictions: { milk: true, gluten: true },
+});
+assert(custom.title === "Test Garden Blend", "custom meal keeps name");
+assert(custom.custom === true, "custom meal flagged");
+assert(custom.steps?.length >= 6, "custom meal has steps");
+let failedCustom = false;
+try {
+  engine.buildCustomMeal({ name: "", base, ingredients: adds });
+} catch {
+  failedCustom = true;
+}
+assert(failedCustom, "custom meal requires a name");
+
+const rotatedOne = engine.rotateSingleMeal(plan, INGREDIENT_DB, { day: 1, mealIndex: 0 });
+assert(rotatedOne.plan[0].meals[0].id !== plan.plan[0].meals[0].id, "single meal rotate changes meal");
+assert(rotatedOne.plan[0].meals.length === plan.plan[0].meals.length, "single rotate keeps meal count");
+
+const dayBreak = nutrition.nutritionBreakdownForDay(plan.plan[0]);
+assert(dayBreak.total.calories > 0, "day breakdown has calories");
+assert(dayBreak.byIngredient.length > 0, "day breakdown has ingredients");
+assert(dayBreak.meals.length > 0, "day breakdown has meals");
+const mealBreak = nutrition.nutritionBreakdownForMeal(plan.plan[0].meals[0]);
+assert(mealBreak.byIngredient.length >= 3, "meal breakdown lists base + ingredients");
+
 if (failed) {
   console.error(`\n${failed} failure(s)`);
   process.exit(1);

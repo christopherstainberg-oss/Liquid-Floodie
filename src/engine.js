@@ -57,6 +57,89 @@ function shuffle(rng, arr) {
   return a;
 }
 
+/**
+ * Build a named custom liquid meal from a liquid base + 2–5 whole-food add-ins.
+ */
+export function buildCustomMeal({ name, base, ingredients, restrictions = { milk: true, gluten: true } }) {
+  const title = String(name || "").trim();
+  if (!title) throw new Error("Give your meal a name.");
+  if (!base || base.category !== "base") throw new Error("Pick a liquid base (water, broth, or juice).");
+  if (!passesRestrictions(base, restrictions)) throw new Error("That base does not meet your dietary restrictions.");
+  const adds = (ingredients || []).filter(Boolean);
+  if (adds.length < 2 || adds.length > 5) {
+    throw new Error("Add 2 to 5 whole-food ingredients.");
+  }
+  for (const item of adds) {
+    if (item.category === "base") throw new Error("Add-ins must not be bases — choose produce, herbs, etc.");
+    if (!passesRestrictions(item, restrictions)) {
+      throw new Error(`“${item.name}” does not meet your dietary restrictions.`);
+    }
+    if (!item.wholeFood) throw new Error(`“${item.name}” is not a whole food.`);
+  }
+  const steps = buildMealSteps(base, adds);
+  return {
+    id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title,
+    name: title,
+    base,
+    ingredients: adds,
+    variationIndex: 0,
+    custom: true,
+    createdAt: new Date().toISOString(),
+    steps,
+    blurb: `Custom blend: ${base.name.toLowerCase()} with ${adds
+      .map((i) => i.name.toLowerCase())
+      .join(", ")}. Whole foods only — respects your dietary restrictions.`,
+  };
+}
+
+/** Insert a custom meal into a plan day slot (creates a minimal plan if needed) */
+export function addCustomMealToPlan(mealPlan, customMeal, { day = 1, slotIndex = 0 } = {}) {
+  const mpd = mealPlan?.mealsPerDay || 2;
+  const days = mealPlan?.days || 5;
+  let plan = mealPlan;
+  if (!plan?.plan?.length) {
+    plan = {
+      id: `plan-custom-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      days,
+      mealsPerDay: mpd,
+      restrictions: { milk: true, gluten: true },
+      ingredientCount: customMeal.ingredients.length,
+      seed: Date.now(),
+      rotateOffset: 0,
+      plan: Array.from({ length: days }, (_, i) => ({
+        day: i + 1,
+        label: `Day ${i + 1}`,
+        meals: [],
+      })),
+      variationPoolSize: 0,
+      endlessCapacity: 0,
+    };
+  }
+  const dayObj = plan.plan.find((d) => d.day === day) || plan.plan[0];
+  const slot = Math.min(Math.max(0, slotIndex | 0), Math.max(0, mpd - 1));
+  const labeled = {
+    ...customMeal,
+    slot: slot === 0 ? "Meal 1" : "Meal 2",
+  };
+  if (!dayObj.meals) dayObj.meals = [];
+  if (dayObj.meals[slot]) dayObj.meals[slot] = labeled;
+  else {
+    while (dayObj.meals.length < slot) {
+      dayObj.meals.push(null);
+    }
+    dayObj.meals[slot] = labeled;
+  }
+  // compact nulls only if needed — keep length
+  dayObj.meals = dayObj.meals.filter(Boolean).slice(0, mpd);
+  if (!dayObj.meals.includes(labeled)) {
+    if (dayObj.meals.length < mpd) dayObj.meals.push(labeled);
+    else dayObj.meals[slot] = labeled;
+  }
+  return plan;
+}
+
 /** Step-by-step instructions for creating a liquid meal in a blender */
 export function buildMealSteps(base, ingredients) {
   const soft = ingredients.filter((i) =>
@@ -271,6 +354,49 @@ export function rotateMealPlan(existingPlan, db, options = {}) {
     seed,
     rotateOffset,
   });
+}
+
+/**
+ * Rotate a single meal in the plan (one slot on one day).
+ * Returns a new plan object with that meal replaced.
+ */
+export function rotateSingleMeal(existingPlan, db, { day, mealIndex = 0, preferredIds = [] } = {}) {
+  if (!existingPlan?.plan?.length) throw new Error("No meal plan to rotate.");
+  const dayObj = existingPlan.plan.find((d) => d.day === day) || existingPlan.plan[0];
+  if (!dayObj?.meals?.length) throw new Error("No meals on that day.");
+  const idx = Math.min(Math.max(0, mealIndex | 0), dayObj.meals.length - 1);
+  const old = dayObj.meals[idx];
+  const seed = ((existingPlan.seed || Date.now()) + day * 1009 + idx * 9176 + Date.now()) >>> 0;
+  const next = generateMeal(db, {
+    restrictions: existingPlan.restrictions || { milk: true, gluten: true },
+    ingredientCount: existingPlan.ingredientCount || old?.ingredients?.length || 3,
+    preferredIds,
+    seed,
+    variationIndex: (old?.variationIndex || 0) + 1 + Math.floor(Math.random() * 50),
+  });
+  // Avoid identical combo if possible
+  let candidate = next;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const key = [candidate.base.id, ...candidate.ingredients.map((x) => x.id).sort()].join("|");
+    const oldKey = old
+      ? [old.base?.id, ...(old.ingredients || []).map((x) => x.id).sort()].join("|")
+      : "";
+    if (key !== oldKey) break;
+    candidate = generateMeal(db, {
+      restrictions: existingPlan.restrictions || { milk: true, gluten: true },
+      ingredientCount: existingPlan.ingredientCount || 3,
+      preferredIds,
+      seed: (seed + attempt * 3331) >>> 0,
+      variationIndex: attempt + 20,
+    });
+  }
+  candidate.slot = old?.slot || (idx === 0 ? "Meal 1" : "Meal 2");
+  const plan = structuredClone(existingPlan);
+  const target = plan.plan.find((d) => d.day === dayObj.day);
+  target.meals[idx] = candidate;
+  plan.rotateOffset = (plan.rotateOffset || 0) + 1;
+  plan.id = `plan-${plan.seed}-${plan.rotateOffset}-${Date.now()}`;
+  return plan;
 }
 
 /** Aggregate grocery list for plan */
