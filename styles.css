@@ -378,6 +378,66 @@ label textarea:focus {
   text-align: left;
 }
 
+/* Foldable cards (Home Daily Meals open; Plan / Nutrients / Settings all collapsed) */
+.home-fold {
+  padding: 0;
+  overflow: hidden;
+}
+.home-fold .settings-block.schedule-inner {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.home-fold-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  list-style: none;
+  cursor: pointer;
+  padding: 16px 20px;
+  font: inherit;
+  color: inherit;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-fold-summary::-webkit-details-marker { display: none; }
+.home-fold-summary::marker { content: ""; }
+.home-fold-summary::after {
+  content: "▸";
+  margin-left: auto;
+  color: var(--brand);
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: transform 0.15s ease;
+}
+.home-fold[open] > .home-fold-summary::after {
+  transform: rotate(90deg);
+}
+.home-fold-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+.home-fold-hint {
+  font-weight: 500;
+  font-size: 0.82rem;
+}
+.home-fold-body {
+  padding: 0 20px 18px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+  padding-top: 14px;
+}
+.home-fold-open h3 {
+  margin-top: 0;
+}
+.home-fold .stat-grid {
+  margin-bottom: 0;
+}
+
 .hero {
   text-align: center;
   padding: 28px 22px;
@@ -894,6 +954,125 @@ label.check {
   background: color-mix(in srgb, var(--bg) 40%, var(--bg2));
 }
 
+/* ---------- Settings: Job Scheduling (uniform block) ---------- */
+.settings-block {
+  margin: 20px 0 28px;
+  padding: 16px 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 45%, var(--bg2));
+  text-align: left;
+}
+.settings-block > h3 {
+  margin: 0 0 8px;
+  text-align: left;
+}
+.settings-explain-list {
+  margin: 0 0 14px;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.settings-explain-list li { margin: 6px 0; }
+.settings-explain-list strong { color: var(--ink); }
+
+.schedule-status-card {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, var(--line));
+  background: color-mix(in srgb, var(--brand) 10%, var(--bg2));
+}
+.schedule-status-card .meta { margin: 0; }
+.schedule-status-card strong { color: var(--brand); }
+
+.schedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.schedule-option {
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin: 0;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg2);
+}
+.schedule-option input {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.schedule-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.schedule-option strong {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.schedule-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.schedule-time-grid {
+  margin: 0;
+}
+.schedule-time-grid .block-label {
+  margin: 0;
+}
+#scheduleTimePreview {
+  margin: -4px 0 0;
+}
+
+.schedule-report-card {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.schedule-report-heading {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  text-align: left;
+}
+.schedule-report-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.schedule-run-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 40%, var(--bg2));
+  font-size: 0.88rem;
+}
+.schedule-run-row .run-when {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.schedule-run-row .run-note {
+  font-weight: 600;
+  color: var(--ink);
+}
+.schedule-report-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
 /* ---------- Ingredient grid (centered cells) ---------- */
 .ing-grid {
   display: grid;
@@ -1092,7 +1271,79 @@ label.check {
   background: var(--line);
   flex-shrink: 0;
 }
-.avatar.lg { width: 64px; height: 64px; }
+.avatar.lg { width: 72px; height: 72px; }
+
+/* Account panel (Settings) — matches Job Scheduling option cards */
+.account-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+.account-status-card {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, var(--line));
+  background: color-mix(in srgb, var(--brand) 10%, var(--bg2));
+}
+.account-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg2);
+}
+.account-profile-text {
+  min-width: 0;
+  flex: 1;
+}
+.account-name {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+  word-break: break-word;
+}
+.account-email {
+  margin: 0;
+  word-break: break-all;
+}
+.account-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--line);
+}
+.account-section:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+.account-section-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: left;
+  color: var(--ink);
+}
+.account-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.account-option {
+  margin: 0;
+}
+.account-actions {
+  margin: 0;
+  flex-wrap: wrap;
+}
+.account-section-danger {
+  padding-top: 14px;
+}
 .account-row {
   display: flex;
   gap: 14px;

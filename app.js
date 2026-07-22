@@ -181,7 +181,6 @@ async function boot() {
     bindGrocery,
     bindNutrients,
     bindCustomIngredients,
-    bindGame,
     bindSettings,
     bindSearch,
     bindShare,
@@ -2491,34 +2490,7 @@ function renderNutrients() {
   }
 }
 
-/* ---------- Gamification (Settings) ---------- */
-function bindGame() {
-  if ($("#displayName")) {
-    $("#displayName").value = state.gamification.displayName || "Foodie";
-    $("#displayName").addEventListener("change", () => {
-      state.gamification.displayName = $("#displayName").value.trim() || "Foodie";
-      if (currentUser) {
-        try {
-          currentUser = updateProfile({ displayName: state.gamification.displayName });
-          refreshUserChrome();
-        } catch {
-          /* ignore */
-        }
-      }
-      saveState(state);
-      renderGame();
-    });
-  }
-  $("#shareProgressBtn")?.addEventListener("click", async () => {
-    const g = state.gamification;
-    await shareOrCopy(
-      `LiquidFloodie: ${g.points || 0} pts · ${(g.badges || []).length} badges · ${state.analytics.plansGenerated || 0} plans.`,
-      "LiquidFloodie achievements"
-    );
-    award(state, "share", 5);
-  });
-}
-
+/* ---------- Gamification (UI removed from Settings; points still track in storage) ---------- */
 function renderGame() {
   const g = state.gamification;
   if (!$("#gameOutput")) return;
@@ -2609,29 +2581,45 @@ function bindSettings() {
     }
   });
 
+  const syncScheduleTimePreview = () => {
+    const h = Math.min(23, Math.max(0, Number($("#schedHour")?.value) || 0));
+    const m = Math.min(59, Math.max(0, Number($("#schedMinute")?.value) || 0));
+    if ($("#scheduleTimePreview")) {
+      $("#scheduleTimePreview").textContent = `Daily job time: ${formatClock(h, m)} (local device time)`;
+    }
+  };
   $("#schedEnabled").checked = !!state.schedule?.enabled;
   $("#schedHour").value = state.schedule?.hour ?? 8;
   $("#schedMinute").value = state.schedule?.minute ?? 0;
   $("#schedAutoRotate").checked = !!state.schedule?.autoRotate;
   $("#notifEnabled").checked = !!state.settings?.notifications;
+  $("#schedHour")?.addEventListener("input", syncScheduleTimePreview);
+  $("#schedMinute")?.addEventListener("input", syncScheduleTimePreview);
+  syncScheduleTimePreview();
 
   $("#saveScheduleBtn").onclick = async () => {
+    const hour = Math.min(23, Math.max(0, Number($("#schedHour").value) || 0));
+    const minute = Math.min(59, Math.max(0, Number($("#schedMinute").value) || 0));
     state.schedule = {
       ...state.schedule,
       enabled: $("#schedEnabled").checked,
-      hour: Number($("#schedHour").value) || 0,
-      minute: Number($("#schedMinute").value) || 0,
+      hour,
+      minute,
       autoRotate: $("#schedAutoRotate").checked,
       history: state.schedule?.history || [],
     };
     state.settings.notifications = $("#notifEnabled").checked;
     if (state.settings.notifications && "Notification" in window) {
       const perm = await Notification.requestPermission();
-      if (perm !== "granted") toast("Notifications not granted");
+      if (perm !== "granted") toast("Notifications not granted — enable them in browser settings to get OS alerts.");
     }
     saveState(state);
     renderSettings();
-    toast("Schedule saved");
+    toast(
+      state.schedule.enabled
+        ? `Schedule saved — daily job at ${formatClock(hour, minute)}`
+        : "Schedule saved — daily job is off"
+    );
   };
 
   $("#exportAllBtn").onclick = () => {
@@ -2678,28 +2666,7 @@ function bindSettings() {
     renderAll();
     toast("All app data cleared");
   };
-  $("#sendFeedbackBtn").onclick = () => {
-    const text = $("#feedbackText").value.trim();
-    if (!text) return toast("Write feedback first");
-    state.feedback = state.feedback || [];
-    state.feedback.unshift({ at: new Date().toISOString(), text });
-    $("#feedbackText").value = "";
-    award(state, "feedback", 5);
-    saveState(state);
-    toast("Feedback saved");
-  };
-  $("#refreshLogsBtn").onclick = () => renderLogs();
-  $("#clearLogsBtn").onclick = () => {
-    clearLogs();
-    renderLogs();
-  };
-  $("#exportHandoffBtn").onclick = () => {
-    downloadText(
-      "liquidfloodie-handoff.md",
-      `# LiquidFloodie Handoff\n\nGenerated: ${new Date().toISOString()}\n\n- npm test && npm run build\n- docker compose up -d --build\n- Sections: Home, Weekly Plan, Grocery, Nutrients, Settings\n`
-    );
-    toast("Handoff exported");
-  };
+  // Feedback, logging, and security/handoff UI intentionally removed from Settings.
 }
 
 async function renderAccountPanel() {
@@ -2707,31 +2674,81 @@ async function renderAccountPanel() {
   if (!box) return;
   currentUser = getCurrentUser();
   if (!currentUser) {
-    box.innerHTML = `<p class="meta">An account is required to use LiquidFloodie. Create an account or log in to continue.</p>
-      <div class="btn-row">
-        <button type="button" class="btn primary" id="openLoginBtn">Create Account / Login</button>
+    box.innerHTML = `
+      <div class="account-panel">
+        <div class="account-status-card">
+          <p class="meta" style="margin:0"><strong>Status:</strong> Not signed in</p>
+        </div>
+        <p class="hint">Accounts stay on this device. Create an account or log in to use LiquidFloodie, recover passwords with your security question, and sync a profile picture.</p>
+        <div class="btn-row account-actions">
+          <button type="button" class="btn primary" id="openLoginBtn">Create Account / Login</button>
+        </div>
       </div>`;
     $("#openLoginBtn").onclick = () => openAuth("register", { required: true });
     return;
   }
   const avatar = await resolveAvatar(currentUser, 96);
+  const mode = currentUser.avatarMode === "local" ? "local" : "gravatar";
   box.innerHTML = `
-    <div class="account-row">
-      <img class="avatar lg" src="${avatar}" alt="" width="64" height="64" />
-      <div><strong>${escapeHtml(currentUser.displayName)}</strong><br/><span class="meta">${escapeHtml(currentUser.email)}</span></div>
-    </div>
-    <label class="check"><input type="radio" name="avatarMode" value="gravatar" ${currentUser.avatarMode !== "local" ? "checked" : ""}/> Gravatar</label>
-    <label class="check"><input type="radio" name="avatarMode" value="local" ${currentUser.avatarMode === "local" ? "checked" : ""}/> Local avatar</label>
-    <div class="btn-row">
-      <button type="button" class="btn" id="saveAvatarBtn">Save avatar</button>
-      <button type="button" class="btn danger" id="logoutBtn">Log out</button>
-      <button type="button" class="btn ghost" id="openRecoverBtn">Password recovery</button>
+    <div class="account-panel">
+      <div class="account-status-card">
+        <p class="meta" style="margin:0"><strong>Status:</strong> Signed in on this device</p>
+      </div>
+
+      <div class="account-profile-card">
+        <img class="avatar lg" src="${avatar}" alt="" width="72" height="72" />
+        <div class="account-profile-text">
+          <p class="account-name">${escapeHtml(currentUser.displayName || "User")}</p>
+          <p class="meta account-email">${escapeHtml(currentUser.email || "")}</p>
+        </div>
+      </div>
+
+      <div class="account-section">
+        <h4 class="account-section-title">Profile picture</h4>
+        <p class="hint">Choose how your avatar is shown in the header. Gravatar uses the email hash; Local uses a built-in placeholder.</p>
+        <div class="account-options" role="radiogroup" aria-label="Avatar source">
+          <label class="check schedule-option account-option">
+            <input type="radio" name="avatarMode" value="gravatar" ${mode === "gravatar" ? "checked" : ""} />
+            <span>
+              <strong>Gravatar</strong>
+              <span class="meta">Pull image from gravatar.com for this email (if you have one set).</span>
+            </span>
+          </label>
+          <label class="check schedule-option account-option">
+            <input type="radio" name="avatarMode" value="local" ${mode === "local" ? "checked" : ""} />
+            <span>
+              <strong>Local avatar</strong>
+              <span class="meta">Use the on-device default picture (no external request).</span>
+            </span>
+          </label>
+        </div>
+        <div class="btn-row account-actions">
+          <button type="button" class="btn primary" id="saveAvatarBtn">Save avatar preference</button>
+        </div>
+      </div>
+
+      <div class="account-section">
+        <h4 class="account-section-title">Security</h4>
+        <p class="hint">Reset your password with the security question you set at registration. You must use the same browser/device where the account was created.</p>
+        <div class="btn-row account-actions">
+          <button type="button" class="btn ghost" id="openRecoverBtn">Password recovery</button>
+        </div>
+      </div>
+
+      <div class="account-section account-section-danger">
+        <h4 class="account-section-title">Session</h4>
+        <p class="hint">Log out ends your session on this device. You will need to sign in again to use the app.</p>
+        <div class="btn-row account-actions">
+          <button type="button" class="btn danger" id="logoutBtn">Log out</button>
+        </div>
+      </div>
     </div>`;
   $("#saveAvatarBtn").onclick = async () => {
-    const mode = $$('input[name="avatarMode"]').find((r) => r.checked)?.value || "gravatar";
-    currentUser = updateProfile({ avatarMode: mode });
+    const next = $$('input[name="avatarMode"]').find((r) => r.checked)?.value || "gravatar";
+    currentUser = updateProfile({ avatarMode: next });
     await refreshUserChrome();
     renderAccountPanel();
+    toast(next === "local" ? "Using local avatar" : "Using Gravatar");
   };
   $("#logoutBtn").onclick = async () => {
     logout();
@@ -2752,6 +2769,43 @@ function renderLogs() {
     : "No log entries yet.";
 }
 
+function formatClock(hour, minute) {
+  const h = Math.min(23, Math.max(0, Number(hour) || 0));
+  const m = Math.min(59, Math.max(0, Number(minute) || 0));
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function renderScheduleStatus() {
+  const line = $("#scheduleStatusLine");
+  const preview = $("#scheduleTimePreview");
+  const s = state.schedule || {};
+  const hour = s.hour ?? 8;
+  const minute = s.minute ?? 0;
+  const time = formatClock(hour, minute);
+  if (preview) preview.textContent = `Daily job time: ${time} (local device time)`;
+  if (!line) return;
+
+  const enabled = !!s.enabled;
+  const auto = !!s.autoRotate;
+  const notif = !!state.settings?.notifications;
+  let notifLabel = "off";
+  if (notif && "Notification" in window) {
+    notifLabel = Notification.permission === "granted" ? "allowed" : Notification.permission === "denied" ? "blocked by browser" : "permission not granted yet";
+  } else if (notif) {
+    notifLabel = "not supported here";
+  }
+  const last = s.lastRun ? `Last run day: ${escapeHtml(s.lastRun)}` : "Not run yet today";
+  const histN = (s.history || []).length;
+
+  if (!enabled) {
+    line.innerHTML = `<strong>Status:</strong> Off · set a time and enable the daily job, then Save. Jobs only run while this app is open on this device.`;
+    return;
+  }
+  line.innerHTML = `<strong>Status:</strong> On · daily at <strong>${escapeHtml(time)}</strong> local · auto-rotate ${
+    auto ? "<strong>on</strong>" : "off"
+  } · notifications ${escapeHtml(notifLabel)} · ${last} · ${histN} run(s) logged`;
+}
+
 function renderSettings() {
   syncRestrictionControls();
   // Keep static form controls in sync with state (import / recover / delete / save)
@@ -2760,11 +2814,9 @@ function renderSettings() {
   if ($("#schedMinute")) $("#schedMinute").value = state.schedule?.minute ?? 0;
   if ($("#schedAutoRotate")) $("#schedAutoRotate").checked = !!state.schedule?.autoRotate;
   if ($("#notifEnabled")) $("#notifEnabled").checked = !!state.settings?.notifications;
-  if ($("#displayName")) $("#displayName").value = state.gamification?.displayName || "Foodie";
+  renderScheduleStatus();
 
   renderAccountPanel();
-  renderGame();
-  renderLogs();
   const a = state.analytics;
   if ($("#analyticsBox")) {
     $("#analyticsBox").innerHTML = `Sessions: ${a.sessions || 0}<br/>Plans: ${a.plansGenerated || 0}<br/>Grocery builds: ${a.groceriesBuilt || 0}<br/>Rotations: ${a.rotations || 0}<br/>Searches: ${a.searches || 0}<br/>Last open: ${a.lastOpen || "—"}`;
@@ -2772,19 +2824,22 @@ function renderSettings() {
   const hist = state.schedule?.history || [];
   if ($("#scheduleReport")) {
     $("#scheduleReport").innerHTML = hist.length
-      ? hist.slice(0, 8).map((h) => `${escapeHtml(h.at)} — ${escapeHtml(h.note)}`).join("<br/>")
-      : "No scheduled jobs yet.";
-  }
-  if ($("#securityBox")) {
-    $("#securityBox").innerHTML = `<ul class="sec-list">
-    <li>PBKDF2-SHA-256 passwords (120k iterations)</li>
-    <li>Security-question recovery with salted answer hash</li>
-    <li>On-device data (localStorage + IndexedDB)</li>
-    <li>CSP, nosniff, frame denial; see SECURITY.md</li>
-  </ul>`;
-  }
-  if ($("#aboutMeta")) {
-    $("#aboutMeta").textContent = `LiquidFloodie v1.2 · ${db.count} ingredients · Home / Weekly Plan / Grocery / Nutrients / Settings`;
+      ? hist
+          .slice(0, 8)
+          .map((h) => {
+            const when = h.at ? new Date(h.at) : null;
+            const whenLabel =
+              when && !Number.isNaN(when.getTime())
+                ? when.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+                : h.at || "—";
+            const note = h.note || (h.autoRotate ? "Reminder + auto-rotate" : "Reminder fired");
+            return `<div class="schedule-run-row">
+              <span class="run-when">${escapeHtml(whenLabel)}</span>
+              <span class="run-note">${escapeHtml(note)}</span>
+            </div>`;
+          })
+          .join("")
+      : `<p class="schedule-report-empty">No scheduled jobs yet. Enable the daily job, save, and keep the app open near the scheduled time.</p>`;
   }
   const trash = loadTrash();
   if ($("#trashList")) {

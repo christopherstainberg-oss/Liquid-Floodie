@@ -67,45 +67,72 @@
   </nav>
 
   <main id="main" class="wrap" tabindex="-1">
-    <!-- HOME: Daily Meals + nutrition summary -->
+    <!-- HOME: Daily Meals open; other cards collapsed by default -->
     <section class="panel active" id="panel-home" aria-labelledby="home-title">
-      <div class="hero card">
-        <h2 id="home-title">Home</h2>
-        <p class="lead">Whole-Food Liquid Meals With the Ability to Track Daily Caloric Intake, Macronutrients, and Micronutrients.</p>
-        <div class="btn-row">
-          <button type="button" class="btn primary" id="goPlanBtn">Weekly Meal Plan</button>
-          <button type="button" class="btn ghost" id="goNutrientsBtn">Nutrients</button>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title" id="home-title">Home</span>
+          <span class="home-fold-hint meta">Welcome &amp; quick links</span>
+        </summary>
+        <div class="home-fold-body hero">
+          <p class="lead">Whole-Food Liquid Meals With the Ability to Track Daily Caloric Intake, Macronutrients, and Micronutrients.</p>
+          <div class="btn-row">
+            <button type="button" class="btn primary" id="goPlanBtn">Weekly Meal Plan</button>
+            <button type="button" class="btn ghost" id="goNutrientsBtn">Nutrients</button>
+          </div>
         </div>
-      </div>
+      </details>
 
-      <div class="stat-grid" id="homeStats" aria-live="polite"></div>
-
-      <div class="card" id="homeRestrictionsCard">
-        <h3>Your Dietary Restrictions</h3>
-        <p class="hint">Active rules applied to today’s meals, the weekly plan, and your grocery list. Manage full list in Settings.</p>
-        <p class="meta" id="homeRestrictionsStatus" aria-live="polite"></p>
-        <div class="btn-row">
-          <button type="button" class="btn ghost" id="homeOpenSettingsRestrictions">Manage Restrictions</button>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Today’s Snapshot</span>
+          <span class="home-fold-hint meta">Calories &amp; macros</span>
+        </summary>
+        <div class="home-fold-body">
+          <div class="stat-grid" id="homeStats" aria-live="polite"></div>
         </div>
-      </div>
+      </details>
 
-      <div class="card" id="dailyMealsCard">
+      <details class="card home-fold" id="homeRestrictionsCard">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Your Dietary Restrictions</span>
+          <span class="home-fold-hint meta">Active avoid rules</span>
+        </summary>
+        <div class="home-fold-body">
+          <p class="hint">Active rules applied to today’s meals, the weekly plan, and your grocery list. Manage full list in Settings.</p>
+          <p class="meta" id="homeRestrictionsStatus" aria-live="polite"></p>
+          <div class="btn-row">
+            <button type="button" class="btn ghost" id="homeOpenSettingsRestrictions">Manage Restrictions</button>
+          </div>
+        </div>
+      </details>
+
+      <div class="card home-fold-open" id="dailyMealsCard">
         <h3>Daily Meals</h3>
         <p class="hint">Your weekly and daily plans are generated automatically. Rotate any meal if you want a new variation. Nutrition totals follow today’s meals.</p>
         <div id="dailyMealsOutput"></div>
       </div>
 
-      <div class="card" id="dailyNutritionCard">
-        <h3>Today’s Nutrition</h3>
-        <p class="hint">Calories, macros, and micros from today’s liquid meals — with per-ingredient breakdown.</p>
-        <div id="dailyNutritionOutput" aria-live="polite"></div>
-      </div>
+      <details class="card home-fold" id="dailyNutritionCard">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Today’s Nutrition</span>
+          <span class="home-fold-hint meta">Breakdown by meal &amp; ingredient</span>
+        </summary>
+        <div class="home-fold-body">
+          <p class="hint">Calories, macros, and micros from today’s liquid meals — with per-ingredient breakdown.</p>
+          <div id="dailyNutritionOutput" aria-live="polite"></div>
+        </div>
+      </details>
     </section>
 
-    <!-- WEEKLY MEAL PLAN -->
+    <!-- WEEKLY MEAL PLAN — all cards collapsed by default -->
     <section class="panel" id="panel-plan" aria-labelledby="plan-title" hidden>
-      <div class="card">
-        <h2 id="plan-title">Weekly Meal Plan</h2>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title" id="plan-title">Weekly Meal Plan</span>
+          <span class="home-fold-hint meta">Meals/day, favorites, rotate</span>
+        </summary>
+        <div class="home-fold-body">
         <p class="hint">5-day liquid meal plan · ≤2 meals/day · 2–5 whole-food add-ins · endless variations · step-by-step instructions</p>
 
         <div class="form-grid">
@@ -146,11 +173,16 @@
           <button type="button" class="btn ghost" id="sharePlanBtn">Share Plan</button>
         </div>
         <p class="meta">Weekly and daily meal plans are created automatically in the background.</p>
-      </div>
+        </div>
+      </details>
 
       <!-- Create Your Own Meal -->
-      <div class="card custom-meal-card">
-        <h2 id="custom-meal-title">Create Your Own Meal</h2>
+      <details class="card home-fold custom-meal-card">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title" id="custom-meal-title">Create Your Own Meal</span>
+          <span class="home-fold-hint meta">Builder, nutrition, save</span>
+        </summary>
+        <div class="home-fold-body">
         <p class="hint">Name your blend, pick a liquid base, search whole-food ingredients, and add 2–5 items that match your dietary restrictions. Optionally set serving size, total calories, macronutrients, and micronutrients.</p>
 
         <label class="block-label">
@@ -266,14 +298,28 @@
           <button type="button" class="btn" id="addCustomToPlanBtn">Save &amp; Add To Plan (Day 1)</button>
           <button type="button" class="btn ghost" id="clearCustomMealBtn">Clear Builder</button>
         </div>
-      </div>
+        </div>
+      </details>
 
-      <div class="card">
-        <h3>My Custom Meals</h3>
-        <div id="customMealsList" aria-live="polite"></div>
-      </div>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">My Custom Meals</span>
+          <span class="home-fold-hint meta">Saved blends</span>
+        </summary>
+        <div class="home-fold-body">
+          <div id="customMealsList" aria-live="polite"></div>
+        </div>
+      </details>
 
-      <div id="planOutput" aria-live="polite"></div>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">This Week’s Plan</span>
+          <span class="home-fold-hint meta">Days, meals, rotate</span>
+        </summary>
+        <div class="home-fold-body">
+          <div id="planOutput" aria-live="polite"></div>
+        </div>
+      </details>
     </section>
 
     <!-- GROCERY -->
@@ -337,68 +383,107 @@
       <div id="groceryOutput" aria-live="polite"></div>
     </section>
 
-    <!-- NUTRIENTS: macros, micros, calories, water, fiber -->
+    <!-- NUTRIENTS — all cards collapsed by default -->
     <section class="panel" id="panel-nutrients" aria-labelledby="nutrients-title" hidden>
-      <div class="card">
-        <h2 id="nutrients-title">Nutrients</h2>
-        <p class="hint">Track calories, macronutrients, micronutrients, water, and fiber from your meal plan plus manual water/fiber logs.</p>
-        <label>
-          View day
-          <select id="nutrientDaySelect"></select>
-        </label>
-      </div>
-
-      <div class="card">
-        <h3>Calories &amp; macros</h3>
-        <div id="macroBars" class="nutrient-bars"></div>
-      </div>
-
-      <div class="card">
-        <h3>Fiber</h3>
-        <div id="fiberBar" class="nutrient-bars"></div>
-        <div class="form-grid">
-          <label>Extra fiber logged (g)
-            <input type="number" id="extraFiber" min="0" step="0.5" value="0" />
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title" id="nutrients-title">Nutrients</span>
+          <span class="home-fold-hint meta">Day selector</span>
+        </summary>
+        <div class="home-fold-body">
+          <p class="hint">Track calories, macronutrients, micronutrients, water, and fiber from your meal plan plus manual water/fiber logs.</p>
+          <label>
+            View day
+            <select id="nutrientDaySelect"></select>
           </label>
         </div>
-        <button type="button" class="btn" id="saveFiberBtn">Save fiber log</button>
-      </div>
+      </details>
 
-      <div class="card">
-        <h3>Water intake</h3>
-        <p class="hint">Includes estimated water from liquid meals plus water you log.</p>
-        <div id="waterBar" class="nutrient-bars"></div>
-        <div class="btn-row">
-          <button type="button" class="btn primary" id="waterPlus250">+250 ml</button>
-          <button type="button" class="btn" id="waterPlus500">+500 ml</button>
-          <button type="button" class="btn ghost" id="waterReset">Reset log</button>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Calories &amp; macros</span>
+          <span class="home-fold-hint meta">Progress bars</span>
+        </summary>
+        <div class="home-fold-body">
+          <div id="macroBars" class="nutrient-bars"></div>
         </div>
-        <label>Logged water (ml)
-          <input type="number" id="waterLogged" min="0" step="50" value="0" />
-        </label>
-        <button type="button" class="btn" id="saveWaterBtn">Save water log</button>
-      </div>
+      </details>
 
-      <div class="card">
-        <h3>Micronutrients</h3>
-        <div id="microBars" class="nutrient-bars"></div>
-      </div>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Fiber</span>
+          <span class="home-fold-hint meta">Meals + log</span>
+        </summary>
+        <div class="home-fold-body">
+          <div id="fiberBar" class="nutrient-bars"></div>
+          <div class="form-grid">
+            <label>Extra fiber logged (g)
+              <input type="number" id="extraFiber" min="0" step="0.5" value="0" />
+            </label>
+          </div>
+          <button type="button" class="btn" id="saveFiberBtn">Save fiber log</button>
+        </div>
+      </details>
 
-      <div class="card">
-        <h3>Daily goals</h3>
-        <p class="hint">Customize targets for calories, macros, fiber, and water.</p>
-        <div class="form-grid" id="goalsForm"></div>
-        <button type="button" class="btn primary" id="saveGoalsBtn">Save goals</button>
-      </div>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Water intake</span>
+          <span class="home-fold-hint meta">Meals + logged</span>
+        </summary>
+        <div class="home-fold-body">
+          <p class="hint">Includes estimated water from liquid meals plus water you log.</p>
+          <div id="waterBar" class="nutrient-bars"></div>
+          <div class="btn-row">
+            <button type="button" class="btn primary" id="waterPlus250">+250 ml</button>
+            <button type="button" class="btn" id="waterPlus500">+500 ml</button>
+            <button type="button" class="btn ghost" id="waterReset">Reset log</button>
+          </div>
+          <label>Logged water (ml)
+            <input type="number" id="waterLogged" min="0" step="50" value="0" />
+          </label>
+          <button type="button" class="btn" id="saveWaterBtn">Save water log</button>
+        </div>
+      </details>
 
-      <div class="card">
-        <h3>Plan overview</h3>
-        <div id="planNutritionOverview" class="meta"></div>
-      </div>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Micronutrients</span>
+          <span class="home-fold-hint meta">Vitamins &amp; minerals</span>
+        </summary>
+        <div class="home-fold-body">
+          <div id="microBars" class="nutrient-bars"></div>
+        </div>
+      </details>
+
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Daily goals</span>
+          <span class="home-fold-hint meta">Customize targets</span>
+        </summary>
+        <div class="home-fold-body">
+          <p class="hint">Customize targets for calories, macros, fiber, and water.</p>
+          <div class="form-grid" id="goalsForm"></div>
+          <button type="button" class="btn primary" id="saveGoalsBtn">Save goals</button>
+        </div>
+      </details>
+
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Plan overview</span>
+          <span class="home-fold-hint meta">Multi-day totals</span>
+        </summary>
+        <div class="home-fold-body">
+          <div id="planNutritionOverview" class="meta"></div>
+        </div>
+      </details>
 
       <!-- Add custom ingredients with full nutrition -->
-      <div class="card" id="customIngredientCard">
-        <h3>Add Custom Ingredient</h3>
+      <details class="card home-fold" id="customIngredientCard">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Add Custom Ingredient</span>
+          <span class="home-fold-hint meta">Macros, micros, flags</span>
+        </summary>
+        <div class="home-fold-body">
         <p class="hint">Create your own whole-food ingredients with calories, macronutrients, micronutrients, and water. They appear in Quick Search, custom meals, meal plans, and grocery lists.</p>
 
         <input type="hidden" id="ciEditId" value="" />
@@ -524,102 +609,172 @@
           <button type="button" class="btn ghost" id="clearCustomIngredientBtn">Clear Form</button>
         </div>
         <p class="meta" id="ciFormStatus" aria-live="polite"></p>
-      </div>
+        </div>
+      </details>
 
-      <div class="card" id="myCustomIngredientsCard">
-        <h3>My Custom Ingredients</h3>
-        <p class="hint">Edit or delete ingredients you have added. Nutrition values are used in meals and daily totals.</p>
-        <div id="customIngredientsList" aria-live="polite"></div>
-      </div>
+      <details class="card home-fold" id="myCustomIngredientsCard">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">My Custom Ingredients</span>
+          <span class="home-fold-hint meta">Edit or delete</span>
+        </summary>
+        <div class="home-fold-body">
+          <p class="hint">Edit or delete ingredients you have added. Nutrition values are used in meals and daily totals.</p>
+          <div id="customIngredientsList" aria-live="polite"></div>
+        </div>
+      </details>
 
     </section>
 
-    <!-- SETTINGS: account, gamification, analytics, scheduling, import/export, delete/recover -->
+    <!-- SETTINGS — all cards collapsed; gamification removed; feedback/logs/security hidden -->
     <section class="panel" id="panel-settings" aria-labelledby="settings-title" hidden>
-      <div class="card">
-        <h2 id="settings-title">Settings</h2>
-
-        <h3>Dietary Restrictions</h3>
-        <p class="hint">Check what you avoid. Checked items are blocked from daily meals, the weekly plan, custom meals, Quick Search, and your grocery list. Add custom keywords to exclude specific foods. Changes save on this device.</p>
-        <div class="restriction-grid" id="dietaryRestrictionsForm" aria-label="Settings dietary restrictions"></div>
-        <div class="custom-restriction-row">
-          <label class="block-label">
-            Add custom restriction
-            <span class="inline-add">
-              <input type="text" id="settingsCustomRestriction" maxlength="40" placeholder="e.g. banana, nightshade, cilantro…" autocomplete="off" />
-              <button type="button" class="btn" id="settingsAddCustomRestriction">Add</button>
-            </span>
-          </label>
-          <div id="settingsCustomRestrictionChips" class="chip-row" aria-live="polite"></div>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title" id="settings-title">Dietary Restrictions</span>
+          <span class="home-fold-hint meta">Avoid rules &amp; custom terms</span>
+        </summary>
+        <div class="home-fold-body">
+          <p class="hint">Check what you avoid. Checked items are blocked from daily meals, the weekly plan, custom meals, Quick Search, and your grocery list. Add custom keywords to exclude specific foods. Changes save on this device.</p>
+          <div class="restriction-grid" id="dietaryRestrictionsForm" aria-label="Settings dietary restrictions"></div>
+          <div class="custom-restriction-row">
+            <label class="block-label">
+              Add custom restriction
+              <span class="inline-add">
+                <input type="text" id="settingsCustomRestriction" maxlength="40" placeholder="e.g. banana, nightshade, cilantro…" autocomplete="off" />
+                <button type="button" class="btn" id="settingsAddCustomRestriction">Add</button>
+              </span>
+            </label>
+            <div id="settingsCustomRestrictionChips" class="chip-row" aria-live="polite"></div>
+          </div>
+          <p class="meta" id="restrictionsStatus" aria-live="polite"></p>
+          <p class="meta">Changes save automatically and regenerate your meal plan and grocery list.</p>
+          <div class="btn-row">
+            <button type="button" class="btn ghost" id="resetRestrictionsBtn">Reset To Defaults</button>
+          </div>
         </div>
-        <p class="meta" id="restrictionsStatus" aria-live="polite"></p>
-        <p class="meta">Changes save automatically and regenerate your meal plan and grocery list.</p>
-        <div class="btn-row">
-          <button type="button" class="btn ghost" id="resetRestrictionsBtn">Reset To Defaults</button>
+      </details>
+
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Account</span>
+          <span class="home-fold-hint meta">Profile, avatar, security</span>
+        </summary>
+        <div class="home-fold-body">
+          <p class="hint">Local account on this device — profile picture, password recovery, and sign-out.</p>
+          <div id="accountPanel" class="account-panel-host"></div>
         </div>
+      </details>
 
-        <h3>Account</h3>
-        <p class="hint">Secure local login, password recovery, and Gravatar profile picture.</p>
-        <div id="accountPanel"></div>
+      <details class="card home-fold" id="jobSchedulingBlock" aria-labelledby="job-scheduling-title">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title" id="job-scheduling-title">Job Scheduling</span>
+          <span class="home-fold-hint meta">Daily reminder &amp; auto-rotate</span>
+        </summary>
+        <div class="home-fold-body">
+          <div class="settings-block schedule-inner">
+            <p class="hint">
+              Run a daily “job” on this device while LiquidFloodie is open in your browser (or installed PWA).
+              At the time you set, the app can toast a blend reminder, optionally rotate your weekly meal plan and rebuild the grocery list, and show a system notification if you allow it.
+            </p>
+            <ul class="settings-explain-list" id="jobSchedulingExplain">
+              <li><strong>When it runs:</strong> once per calendar day, when the clock matches Hour + Minute (checked about every 30 seconds while the app is open).</li>
+              <li><strong>Reminder:</strong> shows an in-app toast; with Web notifications enabled (and permission granted), also shows a browser/OS notification.</li>
+              <li><strong>Auto-rotate:</strong> when the job fires, rotates all weekly meals and refreshes the grocery list (same idea as “Rotate All Meals”).</li>
+              <li><strong>Device-only:</strong> jobs do not run in the cloud—keep this tab or PWA open (or reopen it near the scheduled time) so the timer can fire.</li>
+            </ul>
 
-        <h3>Gamification</h3>
-        <p class="hint">Rewards, badges, challenges, community, and events.</p>
-        <label>
-          Display name
-          <input type="text" id="displayName" maxlength="24" />
-        </label>
-        <div class="btn-row">
-          <button type="button" class="btn ghost" id="shareProgressBtn">Share achievements</button>
+            <div class="schedule-status-card" id="scheduleStatusCard" aria-live="polite">
+              <p class="meta" id="scheduleStatusLine">Schedule status will appear here after you save.</p>
+            </div>
+
+            <div class="schedule-form">
+              <label class="check schedule-option">
+                <input type="checkbox" id="schedEnabled" />
+                <span>
+                  <strong>Enable daily scheduled job</strong>
+                  <span class="meta">Master switch—when off, no reminder or auto-rotate runs.</span>
+                </span>
+              </label>
+
+              <div class="form-grid schedule-time-grid">
+                <label class="block-label">
+                  Hour <span class="meta">(0–23, local time)</span>
+                  <input type="number" id="schedHour" min="0" max="23" value="8" inputmode="numeric" />
+                </label>
+                <label class="block-label">
+                  Minute <span class="meta">(0–59)</span>
+                  <input type="number" id="schedMinute" min="0" max="59" value="0" inputmode="numeric" />
+                </label>
+              </div>
+              <p class="meta" id="scheduleTimePreview">Daily job time: 8:00 (local)</p>
+
+              <div class="schedule-options">
+                <label class="check schedule-option">
+                  <input type="checkbox" id="schedAutoRotate" />
+                  <span>
+                    <strong>Auto-rotate meal plan when job fires</strong>
+                    <span class="meta">Creates new meal variations for the week and updates grocery quantities.</span>
+                  </span>
+                </label>
+                <label class="check schedule-option">
+                  <input type="checkbox" id="notifEnabled" />
+                  <span>
+                    <strong>Web notifications</strong>
+                    <span class="meta">Ask the browser for permission and show “Time to blend” outside the app when the job fires.</span>
+                  </span>
+                </label>
+              </div>
+
+              <div class="btn-row">
+                <button type="button" class="btn primary" id="saveScheduleBtn">Save schedule</button>
+              </div>
+            </div>
+
+            <div class="schedule-report-card">
+              <h4 class="schedule-report-heading">Recent job runs</h4>
+              <p class="hint">History of reminders and auto-rotates saved on this device (newest first).</p>
+              <div id="scheduleReport" class="schedule-report-list" aria-live="polite"></div>
+            </div>
+          </div>
         </div>
-        <div id="gameOutput"></div>
+      </details>
 
-        <h3>Job scheduling</h3>
-        <p class="hint">Automate reminders, auto-rotate, and review schedule reports.</p>
-        <label class="check"><input type="checkbox" id="schedEnabled" /> Enable scheduled reminder</label>
-        <div class="form-grid">
-          <label>Hour <input type="number" id="schedHour" min="0" max="23" value="8" /></label>
-          <label>Minute <input type="number" id="schedMinute" min="0" max="59" value="0" /></label>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Import &amp; export</span>
+          <span class="home-fold-hint meta">Backup JSON</span>
+        </summary>
+        <div class="home-fold-body">
+          <div class="btn-row">
+            <button type="button" class="btn primary" id="exportAllBtn">Export backup JSON</button>
+            <label class="btn ghost file-btn">Import backup<input type="file" id="importFile" accept="application/json,.json" hidden /></label>
+          </div>
         </div>
-        <label class="check"><input type="checkbox" id="schedAutoRotate" /> Auto-rotate meal plan when reminder fires</label>
-        <label class="check"><input type="checkbox" id="notifEnabled" /> Web notifications</label>
-        <button type="button" class="btn" id="saveScheduleBtn">Save schedule</button>
-        <div id="scheduleReport" class="meta"></div>
+      </details>
 
-        <h3>Import &amp; export</h3>
-        <div class="btn-row">
-          <button type="button" class="btn primary" id="exportAllBtn">Export backup JSON</button>
-          <label class="btn ghost file-btn">Import backup<input type="file" id="importFile" accept="application/json,.json" hidden /></label>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Deletion &amp; recovery</span>
+          <span class="home-fold-hint meta">Trash &amp; restore</span>
+        </summary>
+        <div class="home-fold-body">
+          <div class="btn-row">
+            <button type="button" class="btn danger" id="deletePlanBtn">Delete meal plan</button>
+            <button type="button" class="btn danger" id="deleteGroceryBtn">Delete grocery list</button>
+            <button type="button" class="btn danger" id="deleteAllBtn">Delete all user data</button>
+          </div>
+          <div id="trashList"></div>
         </div>
+      </details>
 
-        <h3>Deletion &amp; recovery</h3>
-        <div class="btn-row">
-          <button type="button" class="btn danger" id="deletePlanBtn">Delete meal plan</button>
-          <button type="button" class="btn danger" id="deleteGroceryBtn">Delete grocery list</button>
-          <button type="button" class="btn danger" id="deleteAllBtn">Delete all user data</button>
+      <details class="card home-fold">
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">Analytics</span>
+          <span class="home-fold-hint meta">Usage stats</span>
+        </summary>
+        <div class="home-fold-body">
+          <div id="analyticsBox" class="meta"></div>
         </div>
-        <div id="trashList"></div>
-
-        <h3>Analytics</h3>
-        <div id="analyticsBox" class="meta"></div>
-
-        <h3>Logging &amp; monitoring</h3>
-        <div class="btn-row">
-          <button type="button" class="btn ghost" id="refreshLogsBtn">Refresh logs</button>
-          <button type="button" class="btn danger" id="clearLogsBtn">Clear logs</button>
-        </div>
-        <pre id="logsBox" class="log-box" aria-live="polite"></pre>
-
-        <h3>Feedback</h3>
-        <label>Your feedback<textarea id="feedbackText" rows="3" placeholder="Ideas, bugs, meal requests…"></textarea></label>
-        <button type="button" class="btn" id="sendFeedbackBtn">Save feedback locally</button>
-
-        <h3>Security &amp; handoff</h3>
-        <div id="securityBox" class="meta"></div>
-        <div class="btn-row">
-          <button type="button" class="btn ghost" id="exportHandoffBtn">Export handoff summary</button>
-        </div>
-        <p class="meta" id="aboutMeta"></p>
-      </div>
+      </details>
     </section>
   </main>
 

@@ -612,6 +612,15 @@ await setValue("#schedHour", "9");
 await mustClick("#saveScheduleBtn", "Save schedule");
 await sleep(400);
 
+// Open Account fold for avatar controls
+await page.evaluate(() => {
+  document.querySelectorAll("#panel-settings details.home-fold").forEach((d) => {
+    const t = d.querySelector(".home-fold-title")?.textContent || "";
+    if (/account|job scheduling|import|deletion|analytics|dietary/i.test(t)) d.open = true;
+  });
+});
+await sleep(200);
+
 // Avatar radios
 const radioCount = await page.evaluate(() => document.querySelectorAll('input[name="avatarMode"]').length);
 if (radioCount >= 2) {
@@ -627,29 +636,50 @@ if (radioCount >= 2) {
   await mustClick("#saveAvatarBtn", "Save avatar");
 } else fail("Avatar radios missing");
 
-// Display name
-await setValue("#displayName", "AuditUser");
-await page.evaluate(() => document.getElementById("displayName")?.dispatchEvent(new Event("change")));
-await sleep(200);
-const dn = await page.evaluate(() => document.getElementById("displayName")?.value);
-if (dn === "AuditUser") pass("Display name input works");
-else fail("Display name failed", dn);
+// Removed Settings UI: gamification, feedback, logs, security/handoff
+const removedSettings = await page.evaluate(() => ({
+  game: !!document.getElementById("gameOutput"),
+  feedback: !!document.getElementById("sendFeedbackBtn"),
+  logs: !!document.getElementById("logsBox"),
+  handoff: !!document.getElementById("exportHandoffBtn"),
+  security: !!document.getElementById("securityBox"),
+  displayName: !!document.getElementById("displayName"),
+}));
+if (!removedSettings.game && !removedSettings.feedback && !removedSettings.logs && !removedSettings.handoff && !removedSettings.security && !removedSettings.displayName) {
+  pass("Gamification, feedback, logging, and security/handoff removed from Settings");
+} else fail("Expected Settings sections still present", removedSettings);
 
-// Feedback
-await setValue("#feedbackText", "UI audit feedback note");
-await mustClick("#sendFeedbackBtn", "Save feedback");
-await sleep(200);
+// Collapsed cards on Plan / Nutrients / Settings
+const foldCheck = await page.evaluate(() => {
+  const countClosed = (sel) =>
+    [...document.querySelectorAll(`${sel} details.home-fold`)].filter((d) => !d.open).length;
+  const countAll = (sel) => document.querySelectorAll(`${sel} details.home-fold`).length;
+  return {
+    planAll: countAll("#panel-plan"),
+    planClosed: countClosed("#panel-plan"),
+    nutAll: countAll("#panel-nutrients"),
+    nutClosed: countClosed("#panel-nutrients"),
+    setAll: countAll("#panel-settings"),
+    setClosed: countClosed("#panel-settings"),
+  };
+});
+// After opening settings folds for avatar, re-check plan/nutrients only
+const foldPlanNut = await page.evaluate(() => {
+  const closed = (sel) =>
+    [...document.querySelectorAll(`${sel} details.home-fold`)].every((d) => !d.open);
+  const n = (sel) => document.querySelectorAll(`${sel} details.home-fold`).length;
+  return {
+    planOk: n("#panel-plan") >= 3 && closed("#panel-plan"),
+    nutOk: n("#panel-nutrients") >= 6 && closed("#panel-nutrients"),
+    setHasFolds: n("#panel-settings") >= 5,
+  };
+});
+if (foldPlanNut.planOk && foldPlanNut.nutOk && foldPlanNut.setHasFolds) {
+  pass("Plan, Nutrients, and Settings use collapsed fold cards");
+} else fail("Fold cards incomplete", { foldCheck, foldPlanNut });
 
-// Export / logs / handoff
+// Export still available
 await mustClick("#exportAllBtn", "Export backup");
-await mustClick("#refreshLogsBtn", "Refresh logs");
-await sleep(200);
-const logsText = await page.evaluate(() => document.getElementById("logsBox")?.textContent || "");
-if (logsText.length > 5) pass("Logs output populated");
-else fail("Logs empty");
-
-await mustClick("#exportHandoffBtn", "Export handoff");
-await mustClick("#shareProgressBtn", "Share achievements");
 
 // Header actions
 await mustClick("#searchToggle", "Quick search toggle");
@@ -662,7 +692,6 @@ if (searchOpen) {
   const hits = await page.evaluate(() => document.querySelectorAll("#searchResults .search-item").length);
   if (hits > 0) pass(`Global search results (${hits})`);
   else fail("Global search no results");
-  // Open detail (replaces library browse)
   await page.evaluate(() => document.querySelector("#searchResults .search-item")?.click());
   await sleep(200);
   const detail = await page.evaluate(() => ({
@@ -674,26 +703,6 @@ if (searchOpen) {
 } else fail("Quick search bar not open");
 
 await mustClick("#shareAppBtn", "Share app");
-
-// Join event if present
-const joinedEvent = await page.evaluate(() => {
-  const btn = document.querySelector("#gameOutput button[data-event]:not([disabled])");
-  if (!btn) return false;
-  btn.scrollIntoView({ block: "center" });
-  btn.click();
-  return true;
-});
-if (joinedEvent) {
-  await sleep(300);
-  pass("Join event button works");
-} else pass("Join event skipped (none available)");
-
-// Community post
-const hasCommunity = await page.evaluate(() => !!document.getElementById("communityText"));
-if (hasCommunity) {
-  await setValue("#communityText", "Blend frozen berries first");
-  await mustClick("#postCommunityBtn", "Post community tip");
-} else fail("Community text missing");
 
 // Check for page errors
 const pageErrors = logs.filter((l) => l.startsWith("PAGEERROR") || l.startsWith("error"));
@@ -733,11 +742,6 @@ const orphanButtons = await page.evaluate(() => {
     "deletePlanBtn",
     "deleteGroceryBtn",
     "deleteAllBtn",
-    "sendFeedbackBtn",
-    "refreshLogsBtn",
-    "clearLogsBtn",
-    "exportHandoffBtn",
-    "shareProgressBtn",
     "searchToggle",
     "shareAppBtn",
     "accountBtn",
