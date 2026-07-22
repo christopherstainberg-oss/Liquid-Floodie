@@ -361,6 +361,142 @@ export function estimateItemCost(item) {
 }
 
 /**
+ * Step-by-step how to walk to a product in a given store.
+ * @param {object} ctx
+ * @returns {string[]}
+ */
+function buildDetailedInstructions(ctx) {
+  const {
+    storeId,
+    storeLabel,
+    name,
+    category,
+    aisle,
+    department,
+    zone,
+    side,
+    sideLabel: sLabel,
+    depth,
+    depthLabel: dLabel,
+    tip,
+  } = ctx;
+  const itemName = name || "this item";
+  const cat = category || "other";
+  const steps = [];
+
+  if (storeId === "winco") {
+    steps.push(
+      `At WinCo, enter through the main doors and grab a cart (bring reusable bags — WinCo is bag-your-own).`
+    );
+    if (/produce/i.test(aisle) || cat === "fruit" || cat === "vegetable" || cat === "herb") {
+      steps.push(
+        `Go first to Produce on the front perimeter (WinCo path ①). Look for ${itemName} on the ${sLabel.toLowerCase()} in the ${dLabel.toLowerCase()}.`
+      );
+      steps.push(
+        `Scan wet cooler walls for bagged greens/herbs and dry tables for fruit/roots. Match department: ${department}.`
+      );
+    } else if (/bulk/i.test(aisle) || ["spice", "nut-seed", "legume", "grain"].includes(cat)) {
+      steps.push(
+        `After produce, head to Bulk Foods (WinCo path ② — best prices). Zone: ${zone}.`
+      );
+      steps.push(
+        `Find the ${aisle} bulk / packaged run. Face the ${sLabel.toLowerCase()}, walk to the ${dLabel.toLowerCase()}, then locate ${itemName}.`
+      );
+      steps.push(
+        `If using bulk scoops: use a clean bag, fill with ${itemName}, twist closed, and write the PLU/bin number on the tag.`
+      );
+    } else if (/meat|deli|seafood/i.test(aisle) || cat === "protein") {
+      steps.push(
+        `Continue along the perimeter to Meat / Seafood / Freezer (WinCo path late). Department: ${department}.`
+      );
+      steps.push(
+        `On the ${sLabel.toLowerCase()}, check the ${dLabel.toLowerCase()} of the cooler cases for ${itemName}.`
+      );
+    } else if (/frozen/i.test(aisle)) {
+      steps.push(
+        `Save frozen for last at WinCo (path ⑥). Go to ${aisle} / freezer wall.`
+      );
+      steps.push(
+        `Open freezers on the ${sLabel.toLowerCase()} near the ${dLabel.toLowerCase()} and pick ${itemName}.`
+      );
+    } else {
+      steps.push(
+        `After bulk, enter the center dry aisles (WinCo path ③). Target: ${aisle} — ${department}.`
+      );
+      steps.push(
+        `Enter ${aisle} from the front (entrance end). Stay on the ${sLabel.toLowerCase()} and walk until you reach the ${dLabel.toLowerCase()}.`
+      );
+      steps.push(
+        `Scan shelves eye-level first, then one shelf down for value brands. Pick up ${itemName} (${zone}).`
+      );
+    }
+    if (tip) steps.push(`WinCo tip: ${tip}`);
+    steps.push(
+      `Cross-check the LiquidFloodie WinCo map: aisle · side · depth should match ${aisle} · ${sLabel} · ${dLabel}.`
+    );
+    return steps;
+  }
+
+  // Walmart Supercenter path
+  steps.push(
+    `At Walmart, enter the grocery Supercenter doors and grab a cart near the entrance / checkouts.`
+  );
+  if (/produce/i.test(aisle) || cat === "fruit" || cat === "vegetable" || cat === "herb") {
+    steps.push(
+      `Start at Produce on the front/right perimeter (Walmart path ①). Department: ${department}.`
+    );
+    steps.push(
+      `For ${itemName}: work the ${sLabel.toLowerCase()} of produce, focusing on the ${dLabel.toLowerCase()} of that section (tables vs misted cooler wall).`
+    );
+  } else if (/meat|seafood|deli/i.test(aisle) || cat === "protein") {
+    steps.push(
+      `Walk the outer perimeter to the back wall Meat / Seafood cases (or Deli if prepped). Zone: ${zone}.`
+    );
+    steps.push(
+      `Along the ${sLabel.toLowerCase()}, check the ${dLabel.toLowerCase()} of the protein run for ${itemName}.`
+    );
+  } else if (/frozen/i.test(aisle)) {
+    steps.push(
+      `Leave frozen for last (Walmart path ⑥). Go to ${aisle}.`
+    );
+    steps.push(
+      `Use the ${sLabel.toLowerCase()} of the freezer aisle; open doors near the ${dLabel.toLowerCase()} and select ${itemName}.`
+    );
+  } else if (/dairy|milk/i.test(department) || /dairy/i.test(zone)) {
+    steps.push(
+      `Head to Dairy coolers on the left/back wall (Walmart path ⑤ — cold late).`
+    );
+    steps.push(
+      `On the ${sLabel.toLowerCase()} cooler wall, scan the ${dLabel.toLowerCase()} of the dairy run for ${itemName}.`
+    );
+  } else {
+    steps.push(
+      `From produce, enter the numbered center aisles low→high (Walmart path ②). Target: ${aisle} — ${department}.`
+    );
+    steps.push(
+      `Find aisle signage for ${aisle}. Enter from the FRONT (checkout / entrance end of the aisle).`
+    );
+    steps.push(
+      `Keep to the ${sLabel.toLowerCase()}. Walk toward the ${dLabel.toLowerCase()} of the aisle without crossing early.`
+    );
+    steps.push(
+      `At that depth, scan eye-level shelves first, then lower shelves for value brands. Select ${itemName} in ${zone}.`
+    );
+    steps.push(
+      `Check endcaps at both ends of ${aisle} if the shelf is empty — sale stock often moves to endcaps.`
+    );
+  }
+  if (tip) steps.push(`Walmart tip: ${tip}`);
+  steps.push(
+    `Optional: confirm location in the Walmart app aisle locator for your store number if this remodel differs.`
+  );
+  steps.push(
+    `Match the LiquidFloodie Walmart map pills: ${aisle} · ${sLabel} · ${dLabel}.`
+  );
+  return steps;
+}
+
+/**
  * Store-specific navigation for one ingredient.
  * @param {object} item
  * @param {"walmart"|"winco"} storeId
@@ -390,6 +526,23 @@ export function navigationForItem(item, storeId = "walmart") {
   depth = pickDepth(depth, item?.name, item?.id);
 
   const sortKey = aisleSortKey(aisle, depth, side, item?.name);
+  const sLabel = sideLabel(side);
+  const dLabel = depthLabel(depth);
+
+  const detailedSteps = buildDetailedInstructions({
+    storeId,
+    storeLabel: store.label,
+    name: item?.name,
+    category: cat,
+    aisle,
+    department,
+    zone,
+    side,
+    sideLabel: sLabel,
+    depth,
+    depthLabel: dLabel,
+    tip,
+  });
 
   return {
     storeId,
@@ -398,12 +551,15 @@ export function navigationForItem(item, storeId = "walmart") {
     department,
     zone,
     side,
-    sideLabel: sideLabel(side),
+    sideLabel: sLabel,
     depth,
-    depthLabel: depthLabel(depth),
+    depthLabel: dLabel,
     tip,
     sortKey,
-    summary: `${aisle} · ${sideLabel(side)} · ${depthLabel(depth)}`,
+    summary: `${aisle} · ${sLabel} · ${dLabel}`,
+    detailedSteps,
+    /** Single paragraph for export / share */
+    instructions: detailedSteps.join(" "),
   };
 }
 

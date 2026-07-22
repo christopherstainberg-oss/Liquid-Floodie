@@ -66,6 +66,20 @@ const grocery = engine.buildGroceryList(plan);
 assert(grocery.items.length > 0, "grocery list non-empty");
 assert(grocery.items.every((it) => it.nav?.walmart?.aisle && it.nav?.winco?.aisle), "grocery items have Walmart + WinCo aisle nav");
 assert(grocery.items.every((it) => it.nav?.walmart?.side && it.nav?.walmart?.depth), "grocery items have side + depth");
+assert(
+  grocery.items.every(
+    (it) =>
+      Array.isArray(it.nav?.walmart?.detailedSteps) &&
+      it.nav.walmart.detailedSteps.length >= 3 &&
+      Array.isArray(it.nav?.winco?.detailedSteps) &&
+      it.nav.winco.detailedSteps.length >= 3
+  ),
+  "grocery items have detailed Walmart + WinCo find instructions"
+);
+assert(
+  grocery.items.every((it) => it.nav?.winco?.detailedSteps?.some((s) => /WinCo/i.test(s))),
+  "WinCo instructions mention WinCo by name"
+);
 assert(grocery.items.every((it) => it.cost?.typical > 0 && it.cost?.lineTypical > 0), "grocery items have comparable costs");
 assert(grocery.costTotals?.typical > 0, `grocery cost total > 0 (got ${grocery.costTotals?.typical})`);
 assert(grocery.costTotals?.min <= grocery.costTotals?.typical && grocery.costTotals?.typical <= grocery.costTotals?.max, "cost range ordered");

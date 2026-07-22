@@ -384,6 +384,28 @@ if (groceryCbs > 0) {
   if (navSample.hasAisle && navSample.hasSide && navSample.hasDepth) {
     pass("Grocery items show aisle + side + depth navigation");
   } else fail("Grocery nav details missing", navSample);
+
+  const detailUi = await page.evaluate(() => {
+    const card = document.querySelector(".grocery-item-card");
+    const html = card?.innerHTML || "";
+    const text = card?.innerText || "";
+    const wincoStrong = (html.match(/<strong>WinCo<\/strong>/gi) || []).length;
+    const steps = card?.querySelectorAll(".grocery-nav-steps li")?.length || 0;
+    const storeBlocks = card?.querySelectorAll(".grocery-store-nav")?.length || 0;
+    return {
+      wincoStrong,
+      steps,
+      storeBlocks,
+      hasWalmartWord: /walmart/i.test(text),
+      hasWincoWord: /winco/i.test(text),
+      hasStepList: steps >= 4,
+    };
+  });
+  if (detailUi.storeBlocks >= 2 && detailUi.hasStepList && detailUi.hasWalmartWord && detailUi.hasWincoWord) {
+    pass("Each grocery item shows Walmart + WinCo detailed find instructions");
+  } else fail("Detailed dual-store instructions missing", detailUi);
+  if (detailUi.wincoStrong >= 1) pass("WinCo is bold under grocery items");
+  else fail("WinCo not bolded in grocery item HTML", detailUi);
   if (navSample.hasCost && navSample.hasTotal) pass("Grocery shows item cost + approximate total");
   else fail("Grocery cost display missing", navSample);
 

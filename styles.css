@@ -745,12 +745,36 @@ label.check {
 .grocery-nav-block {
   padding: 8px 0 0 28px;
   border-top: 1px dashed color-mix(in srgb, var(--line) 80%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.grocery-store-nav {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 35%, var(--bg2));
+  text-align: left;
+}
+.grocery-store-nav.is-primary {
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--line));
+  background: color-mix(in srgb, var(--brand) 8%, var(--bg2));
+}
+.grocery-store-nav-label {
+  margin: 0 0 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.grocery-store-nav-label strong {
+  font-weight: 800;
+  color: var(--brand);
 }
 .grocery-nav-primary {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 8px 0 6px;
+  margin: 6px 0;
 }
 .nav-pill {
   display: inline-block;
@@ -767,6 +791,19 @@ label.check {
   background: color-mix(in srgb, var(--bg) 50%, var(--bg2));
   border-color: var(--line);
   color: var(--muted);
+}
+.grocery-nav-steps {
+  margin: 6px 0 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  text-align: left;
+}
+.grocery-nav-steps li { margin: 5px 0; }
+.grocery-nav-steps strong {
+  font-weight: 800;
+  color: var(--brand);
 }
 .grocery-nav-tip { margin: 4px 0; }
 .grocery-nav-alt { margin: 4px 0 0; opacity: 0.9; }

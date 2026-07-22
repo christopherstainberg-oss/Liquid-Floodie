@@ -1744,9 +1744,16 @@ function ensureGroceryEnriched(list) {
   if (!list?.items?.length) return list;
   let changed = false;
   list.items = list.items.map((it) => {
-    if (it.nav?.walmart && it.cost?.typical != null) return it;
+    const hasDetail =
+      it.nav?.walmart?.detailedSteps?.length >= 3 &&
+      it.nav?.winco?.detailedSteps?.length >= 3 &&
+      it.cost?.typical != null;
+    if (hasDetail) return it;
     changed = true;
-    return enrichGroceryItem(it, it.qty || 1);
+    // Preserve checked flag across re-enrich
+    const next = enrichGroceryItem(it, it.qty || 1);
+    next.checked = !!it.checked;
+    return next;
   });
   if (changed || !list.costTotals) {
     list.costTotals = groceryCostTotals(list.items);
@@ -1830,14 +1837,24 @@ function groceryText(list) {
   header.push("");
   for (const it of items) {
     const nav = it.nav?.[storeId] || {};
+    const otherId = storeId === "walmart" ? "winco" : "walmart";
+    const other = it.nav?.[otherId] || {};
     const cost = it.cost || {};
     header.push(
       `[${it.checked ? "x" : " "}] ${it.name} ×${it.qty}  ·  ${formatMoney(cost.lineTypical)}  (${formatMoney(cost.typical)}/${cost.unit || "ea"})`
     );
     header.push(
-      `    ${nav.aisle || "?"} · ${nav.sideLabel || ""} · ${nav.depthLabel || ""} · ${nav.department || ""}`
+      `    ${nav.storeLabel || storeId}: ${nav.aisle || "?"} · ${nav.sideLabel || ""} · ${nav.depthLabel || ""} · ${nav.department || ""}`
     );
-    if (nav.tip) header.push(`    Tip: ${nav.tip}`);
+    const steps = nav.detailedSteps || (nav.instructions ? [nav.instructions] : []);
+    for (const s of steps) header.push(`      - ${s}`);
+    if (other?.aisle) {
+      header.push(
+        `    ${other.storeLabel || otherId}: ${other.aisle} · ${other.sideLabel || ""} · ${other.depthLabel || ""}`
+      );
+      const oSteps = other.detailedSteps || [];
+      for (const s of oSteps.slice(0, 4)) header.push(`      - ${s}`);
+    }
   }
   return header.join("\n");
 }
@@ -1977,11 +1994,52 @@ function renderGroceryCostSummary(totals) {
     </div>`;
 }
 
+/** Escape HTML then bold every "WinCo" / "Winco" occurrence for display */
+function boldWinCoHtml(text) {
+  const safe = escapeHtml(text ?? "");
+  return safe.replace(/\bWinCo\b/gi, "<strong>WinCo</strong>");
+}
+
+function storeNavBlockHtml(nav, { primary = false } = {}) {
+  if (!nav) return "";
+  const label = nav.storeLabel || nav.storeId || "Store";
+  const isWinco = /winco/i.test(label) || nav.storeId === "winco";
+  const title = isWinco ? "<strong>WinCo</strong>" : escapeHtml(label);
+  const steps = Array.isArray(nav.detailedSteps) && nav.detailedSteps.length
+    ? nav.detailedSteps
+    : nav.instructions
+      ? [nav.instructions]
+      : nav.tip
+        ? [nav.tip]
+        : [];
+  const stepsHtml = steps.length
+    ? `<ol class="grocery-nav-steps">
+        ${steps.map((s) => `<li>${boldWinCoHtml(s)}</li>`).join("")}
+      </ol>`
+    : "";
+  return `
+    <div class="grocery-store-nav ${primary ? "is-primary" : "is-secondary"}" data-store="${escapeHtml(nav.storeId || "")}">
+      <p class="grocery-store-nav-label">${title} aisle &amp; find instructions</p>
+      <p class="grocery-nav-primary">
+        <span class="nav-pill">${escapeHtml(nav.aisle || "Aisle ?")}</span>
+        <span class="nav-pill subtle">${escapeHtml(nav.sideLabel || "Side ?")}</span>
+        <span class="nav-pill subtle">${escapeHtml(nav.depthLabel || "Depth ?")}</span>
+      </p>
+      <p class="meta"><strong>${escapeHtml(nav.department || "")}</strong> · ${escapeHtml(nav.zone || "")}</p>
+      ${stepsHtml}
+    </div>`;
+}
+
 function groceryItemHtml(it, storeId) {
-  const nav = it.nav?.[storeId] || {};
+  const primary = it.nav?.[storeId] || {};
   const otherId = storeId === "walmart" ? "winco" : "walmart";
-  const other = it.nav?.[otherId] || {};
+  const secondary = it.nav?.[otherId] || {};
   const cost = it.cost || {};
+  // Always list WinCo block with bold "WinCo"; preferred store first
+  const blocks =
+    storeId === "winco"
+      ? storeNavBlockHtml(primary, { primary: true }) + storeNavBlockHtml(secondary, { primary: false })
+      : storeNavBlockHtml(primary, { primary: true }) + storeNavBlockHtml(secondary, { primary: false });
   return `
     <article class="grocery-item-card ${it.checked ? "done" : ""}">
       <label class="grocery-item-check">
@@ -1992,15 +2050,8 @@ function groceryItemHtml(it, storeId) {
         <span class="cost-line"><strong>${formatMoney(cost.lineTypical)}</strong> line</span>
         <span class="meta">${formatMoney(cost.typical)} / ${escapeHtml(cost.unit || "each")} · range ${formatMoney(cost.min)}–${formatMoney(cost.max)}</span>
       </div>
-      <div class="grocery-nav-block" data-store="${escapeHtml(storeId)}">
-        <p class="grocery-nav-primary">
-          <span class="nav-pill">${escapeHtml(nav.aisle || "Aisle ?")}</span>
-          <span class="nav-pill subtle">${escapeHtml(nav.sideLabel || "Side ?")}</span>
-          <span class="nav-pill subtle">${escapeHtml(nav.depthLabel || "Depth ?")}</span>
-        </p>
-        <p class="meta"><strong>${escapeHtml(nav.department || "")}</strong> · ${escapeHtml(nav.zone || "")}</p>
-        <p class="meta grocery-nav-tip">${escapeHtml(nav.tip || "")}</p>
-        <p class="meta grocery-nav-alt"><strong>${escapeHtml(other.storeLabel || otherId)}:</strong> ${escapeHtml(other.summary || other.aisle || "—")}</p>
+      <div class="grocery-nav-block">
+        ${blocks}
       </div>
     </article>`;
 }
