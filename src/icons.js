@@ -25,23 +25,4 @@ export function categoryMeta(category) {
   return CATEGORY_ICONS[category] || CATEGORY_ICONS.other;
 }
 
-/** Inline SVG badge for a category (accessible, consistent style) */
-export function categorySvg(category, size = 28) {
-  const meta = categoryMeta(category);
-  const emoji = meta.emoji;
-  // Use foreignObject-free: circle + text emoji
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32" role="img" aria-label="${meta.label}">
-    <circle cx="16" cy="16" r="15" fill="${meta.color}" opacity="0.18"/>
-    <circle cx="16" cy="16" r="14" fill="none" stroke="${meta.color}" stroke-width="1.5"/>
-    <text x="16" y="21" text-anchor="middle" font-size="14">${emoji}</text>
-  </svg>`;
-}
 
-export function iconLegendHtml() {
-  return Object.entries(CATEGORY_ICONS)
-    .map(
-      ([key, meta]) =>
-        `<span class="icon-legend-item" title="${meta.label}"><span class="ico">${meta.emoji}</span> ${meta.label}</span>`
-    )
-    .join("");
-}

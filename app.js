@@ -1,6 +1,6 @@
 /**
  * LiquidFloodie UI v1.2
- * Sections: Home (daily meals), Weekly Plan, Grocery, Nutrients (+ library), Settings
+ * Sections: Home (daily meals), Weekly Plan, Grocery, Nutrients, Settings
  */
 import { INGREDIENT_DB } from "./data/ingredients.js";
 import {
@@ -11,7 +11,6 @@ import {
   buildGroceryList,
   planToShareText,
   thirdPartyLinks,
-  estimateEndlessCapacity,
   buildMealSteps,
   buildCustomMeal,
   addCustomMealToPlan,
@@ -54,7 +53,7 @@ import {
   resolveAvatar,
   cryptoReady,
 } from "./src/auth.js";
-import { iconFor, iconLegendHtml } from "./src/icons.js";
+import { iconFor } from "./src/icons.js";
 import {
   nutritionForMeal,
   nutritionForPlan,
@@ -70,6 +69,14 @@ import {
   hasUserNutrition,
   todayKey,
 } from "./src/nutrition.js";
+import {
+  NAV_TECHNIQUES,
+  storeMeta,
+  sortGroceryByStorePath,
+  groceryCostTotals,
+  enrichGroceryItem,
+  formatMoney,
+} from "./src/grocery-nav.js";
 
 const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
@@ -77,9 +84,13 @@ const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 let state = loadState();
 state.restrictions = normalizeRestrictions(state.restrictions || defaultRestrictions());
 if (!Array.isArray(state.customIngredients)) state.customIngredients = [];
+// Drop any accidental internal keys from older sessions
+if (state._lastAppliedRestrictions) delete state._lastAppliedRestrictions;
 let db = mergeIngredientDb(INGREDIENT_DB, state.customIngredients);
 let currentUser = getCurrentUser();
 let selectedNutrientDay = 1;
+/** Last restrictions applied to plan regen (in-memory only) */
+let lastAppliedRestrictions = structuredClone(state.restrictions);
 
 /** Rebuild runtime catalog including user custom ingredients */
 function rebuildIngredientDb() {
@@ -169,7 +180,6 @@ async function boot() {
     bindPlan,
     bindGrocery,
     bindNutrients,
-    bindLibrary,
     bindCustomIngredients,
     bindGame,
     bindSettings,
@@ -211,7 +221,7 @@ async function boot() {
     unlockAppAfterAuth();
     const go = params.get("go");
     if (go) {
-      const map = { rewards: "settings", game: "settings", library: "nutrients", nutrients: "nutrients" };
+      const map = { rewards: "settings", game: "settings", library: "nutrients", nutrients: "nutrients", search: "home" };
       showTab(map[go] || go);
     } else {
       showTab("home");
@@ -361,7 +371,6 @@ function showTab(name) {
   try {
     if (name === "home") {
       renderHome();
-      renderLibrary();
     }
     if (name === "grocery") renderGrocery();
     if (name === "plan") renderPlan();
@@ -745,7 +754,7 @@ async function refreshUserChrome() {
   }
 }
 
-/* ---------- Home: daily meals (no ingredients library grid) ---------- */
+/* ---------- Home: daily meals ---------- */
 function bindHome() {
   $("#goPlanBtn").onclick = () => showTab("plan");
   $("#goNutrientsBtn").onclick = () => showTab("nutrients");
@@ -761,7 +770,7 @@ function restrictionsSummaryText() {
   if (!parts.length) {
     return "No dietary restrictions active — all whole foods are available for meals and the grocery list.";
   }
-  return `Currently avoiding: ${parts.join(" · ")}. Applied to daily meals, weekly plan, ingredients library, and grocery list.`;
+  return `Currently avoiding: ${parts.join(" · ")}. Applied to daily meals, weekly plan, Quick Search, and grocery list.`;
 }
 
 function restrictionsEqual(a, b) {
@@ -843,23 +852,17 @@ function addCustomRestriction(inputId) {
   toast(`Added restriction: No “${term}”`);
 }
 
-/** Sync dietary restriction checkboxes (Weekly Plan + Settings + Home) */
+/** Sync dietary restriction checkboxes (Settings is source of truth) */
 function syncRestrictionControls() {
   state.restrictions = getRestrictions();
-  renderRestrictionCheckboxes("#planRestrictionsForm", "plan");
   renderRestrictionCheckboxes("#dietaryRestrictionsForm", "settings");
-  renderCustomRestrictionChips("#planCustomRestrictionChips");
   renderCustomRestrictionChips("#settingsCustomRestrictionChips");
   const text = restrictionsSummaryText();
   if ($("#restrictionsStatus")) $("#restrictionsStatus").textContent = text;
-  if ($("#planRestrictionsStatus")) $("#planRestrictionsStatus").textContent = text;
-  if ($("#homeRestrictionsStatus")) $("#homeRestrictionsStatus").textContent = text;
-  if ($("#libRestrictionsNote")) {
-    const parts = restrictionsSummary(getRestrictions());
-    $("#libRestrictionsNote").textContent = parts.length
-      ? `Library filtered by: ${parts.join(" · ")}`
-      : "Showing all whole-food ingredients (no restrictions active).";
+  if ($("#planRestrictionsStatus")) {
+    $("#planRestrictionsStatus").textContent = text + " Manage full list in Settings.";
   }
+  if ($("#homeRestrictionsStatus")) $("#homeRestrictionsStatus").textContent = text;
   if ($("#groceryRestrictionsStatus")) {
     const parts = restrictionsSummary(getRestrictions());
     $("#groceryRestrictionsStatus").textContent = parts.length
@@ -873,12 +876,18 @@ function syncRestrictionControls() {
  * @param {boolean} [forceRegen]
  */
 function applyRestrictionChange(forceRegen = false) {
-  const next = getRestrictions();
-  const prev = state.restrictions;
-  const changed = forceRegen || !restrictionsEqual(prev, next);
+  const next = normalizeRestrictions(state.restrictions || defaultRestrictions());
+  const changed = forceRegen || !restrictionsEqual(lastAppliedRestrictions, next);
   state.restrictions = next;
+  lastAppliedRestrictions = structuredClone(next);
   saveState(state);
   log("restrictions", "updated", JSON.stringify(state.restrictions));
+  // Sync both Plan + Settings grids BEFORE any regen so hidden forms cannot overwrite state
+  try {
+    syncRestrictionControls();
+  } catch {
+    /* ignore */
+  }
   if (changed) {
     try {
       autogenerateWeeklyPlan();
@@ -889,7 +898,6 @@ function applyRestrictionChange(forceRegen = false) {
   try {
     populateCustomBaseSelect();
     renderCustomIngSearch($("#customIngSearch")?.value || "");
-    renderLibrary();
     renderHome();
     renderPlan();
     renderGrocery();
@@ -902,16 +910,16 @@ function applyRestrictionChange(forceRegen = false) {
 }
 
 /**
- * Save dietary restrictions from Weekly Plan or Settings checkboxes.
- * @param {"plan"|"settings"} [from]
+ * Save dietary restrictions from Settings checkboxes (auto-save on change).
+ * @param {"settings"|"plan"} [from]
  */
-function saveDietaryRestrictions(from) {
-  const formSel = from === "plan" ? "#planRestrictionsForm" : "#dietaryRestrictionsForm";
-  const form = $(formSel) || $("#dietaryRestrictionsForm") || $("#planRestrictionsForm");
+function saveDietaryRestrictions(from = "settings") {
+  const form = $("#dietaryRestrictionsForm");
   const r = getRestrictions();
   if (form) {
     form.querySelectorAll("input[data-restriction-id]").forEach((input) => {
-      r[input.dataset.restrictionId] = !!input.checked;
+      const id = input.dataset.restrictionId;
+      if (id) r[id] = !!input.checked;
     });
   }
   // Vegan implies related animal restrictions
@@ -922,7 +930,7 @@ function saveDietaryRestrictions(from) {
     r.fish = true;
     r.shellfish = true;
   }
-  const prev = { ...getRestrictions() };
+  const prev = getRestrictions();
   state.restrictions = normalizeRestrictions(r);
   applyRestrictionChange(!restrictionsEqual(prev, state.restrictions));
   return state.restrictions;
@@ -982,7 +990,7 @@ function renderHome() {
       .join("")}
     <div class="btn-row">
       <button type="button" class="btn ghost" id="homeOpenPlan">Open Full Weekly Plan</button>
-      <button type="button" class="btn ghost" id="homeOpenNutrients">Nutrients &amp; Library</button>
+      <button type="button" class="btn ghost" id="homeOpenNutrients">Nutrients</button>
     </div>
   `;
   $("#homeOpenPlan").onclick = () => showTab("plan");
@@ -1185,12 +1193,55 @@ let customDraft = { baseId: null, ingredientIds: [] };
 const CUSTOM_MACRO_IDS = ["customCal", "customProtein", "customCarbs", "customFat", "customFiber"];
 const CUSTOM_MICRO_KEYS = Object.keys(MICRO_LABELS);
 
+function planStructureDiffersFromForm() {
+  if (!state.mealPlan) return true;
+  const mpd = Number($("#mealsPerDay")?.value) || state.mealsPerDay || 2;
+  const ic = Number($("#ingredientCount")?.value) || state.ingredientCount || 3;
+  if ((state.mealPlan.mealsPerDay || 2) !== mpd) return true;
+  if ((state.mealPlan.ingredientCount || 3) !== ic) return true;
+  if (!restrictionsEqual(state.mealPlan.restrictions, getRestrictions())) return true;
+  return false;
+}
+
+/** Apply meals/day + ingredient-count from the Weekly Plan form and rebuild if needed */
+function applyPlanFormSettings({ toastOnChange = true } = {}) {
+  syncPlanFormToState();
+  if (planStructureDiffersFromForm() || !state.mealPlan?.plan?.length) {
+    try {
+      autogenerateWeeklyPlan();
+      renderPlan();
+      renderHome();
+      renderGrocery();
+      renderNutrients();
+      if (toastOnChange) toast("Meal plan updated for your settings");
+      return true;
+    } catch (e) {
+      toast(e.message || "Could not update plan");
+      return false;
+    }
+  }
+  return false;
+}
+
 function bindPlan() {
   $("#rotatePlanBtn").onclick = () => {
-    if (!state.mealPlan) return toast("Generate a plan first");
     try {
       syncPlanFormToState();
-      state.mealPlan = rotateMealPlan(state.mealPlan, db, { preferredIds: state.preferredIds });
+      ensureAutoMealPlan();
+      if (planStructureDiffersFromForm()) {
+        autogenerateWeeklyPlan();
+        renderPlan();
+        renderHome();
+        renderGrocery();
+        toast("Plan rebuilt with meals/day & ingredient settings");
+        return;
+      }
+      state.mealPlan = rotateMealPlan(state.mealPlan, db, {
+        preferredIds: state.preferredIds,
+        mealsPerDay: state.mealsPerDay,
+        ingredientCount: state.ingredientCount,
+        restrictions: getRestrictions(),
+      });
       state.groceryList = buildGroceryList(state.mealPlan);
       trackIngredientUsage(state, state.mealPlan);
       state.analytics.rotations = (state.analytics.rotations || 0) + 1;
@@ -1198,6 +1249,7 @@ function bindPlan() {
       saveState(state);
       renderPlan();
       renderHome();
+      renderGrocery();
       toast("Meals rotated");
     } catch (e) {
       toast(e.message || "Rotate failed");
@@ -1212,15 +1264,13 @@ function bindPlan() {
   $("#prefSearch")?.addEventListener("input", () => renderPrefPicker($("#prefSearch").value));
   if ($("#mealsPerDay")) $("#mealsPerDay").value = String(state.mealsPerDay || 2);
   if ($("#ingredientCount")) $("#ingredientCount").value = String(state.ingredientCount || 3);
-  syncRestrictionControls();
 
-  $("#planAddCustomRestriction")?.addEventListener("click", () => addCustomRestriction("#planCustomRestriction"));
-  $("#planCustomRestriction")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addCustomRestriction("#planCustomRestriction");
-    }
-  });
+  // Changing structure must rebuild the plan so UI selections take effect immediately
+  $("#mealsPerDay")?.addEventListener("change", () => applyPlanFormSettings());
+  $("#ingredientCount")?.addEventListener("change", () => applyPlanFormSettings());
+
+  syncRestrictionControls();
+  $("#planOpenSettingsRestrictions")?.addEventListener("click", () => showTab("settings"));
 
   bindCustomMealBuilder();
 }
@@ -1582,19 +1632,20 @@ function renderCustomMealsList() {
   };
 }
 
+/**
+ * Sync meals/day + ingredient count from the Weekly Plan form.
+ * Dietary restrictions are owned by saveDietaryRestrictions / applyRestrictionChange —
+ * do NOT re-read restriction checkboxes here. Doing so overwrites Settings changes
+ * with a stale Plan form (the other form is not yet re-rendered).
+ */
 function syncPlanFormToState() {
-  state.mealsPerDay = Number($("#mealsPerDay")?.value) || 2;
-  state.ingredientCount = Number($("#ingredientCount")?.value) || 3;
-  const form = $("#planRestrictionsForm");
-  if (form) {
-    const r = getRestrictions();
-    form.querySelectorAll("input[data-restriction-id]").forEach((input) => {
-      r[input.dataset.restrictionId] = !!input.checked;
-    });
-    state.restrictions = normalizeRestrictions(r);
-  } else {
-    state.restrictions = getRestrictions();
+  if ($("#mealsPerDay")) {
+    state.mealsPerDay = Number($("#mealsPerDay").value) || 2;
   }
+  if ($("#ingredientCount")) {
+    state.ingredientCount = Number($("#ingredientCount").value) || 3;
+  }
+  state.restrictions = getRestrictions();
   saveState(state);
 }
 
@@ -1643,6 +1694,8 @@ function renderPrefSelected() {
 function renderPlan() {
   renderPrefSelected();
   syncRestrictionControls();
+  if ($("#mealsPerDay")) $("#mealsPerDay").value = String(state.mealsPerDay || state.mealPlan?.mealsPerDay || 2);
+  if ($("#ingredientCount")) $("#ingredientCount").value = String(state.ingredientCount || state.mealPlan?.ingredientCount || 3);
   populateCustomBaseSelect();
   renderCustomIngSelected();
   renderCustomMealsList();
@@ -1679,7 +1732,65 @@ function renderPlan() {
 }
 
 /* ---------- Grocery ---------- */
+function groceryStoreId() {
+  return state.settings?.groceryStore === "winco" ? "winco" : "walmart";
+}
+
+function grocerySortMode() {
+  return state.settings?.grocerySort || "aisle";
+}
+
+function ensureGroceryEnriched(list) {
+  if (!list?.items?.length) return list;
+  let changed = false;
+  list.items = list.items.map((it) => {
+    if (it.nav?.walmart && it.cost?.typical != null) return it;
+    changed = true;
+    return enrichGroceryItem(it, it.qty || 1);
+  });
+  if (changed || !list.costTotals) {
+    list.costTotals = groceryCostTotals(list.items);
+  }
+  return list;
+}
+
+function sortedGroceryItems(items, storeId, sortMode) {
+  const list = [...(items || [])];
+  if (sortMode === "name") {
+    return list.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  }
+  if (sortMode === "cost") {
+    return list.sort((a, b) => (b.cost?.lineTypical || 0) - (a.cost?.lineTypical || 0));
+  }
+  if (sortMode === "category") {
+    return list.sort((a, b) => {
+      if (a.category === b.category) return String(a.name).localeCompare(String(b.name));
+      return String(a.category).localeCompare(String(b.category));
+    });
+  }
+  // default: store aisle path
+  return sortGroceryByStorePath(list, storeId);
+}
+
 function bindGrocery() {
+  if (!state.settings) state.settings = {};
+  if ($("#groceryStoreSelect")) {
+    $("#groceryStoreSelect").value = groceryStoreId();
+    $("#groceryStoreSelect").onchange = () => {
+      state.settings.groceryStore = $("#groceryStoreSelect").value;
+      saveState(state);
+      renderGrocery();
+    };
+  }
+  if ($("#grocerySortSelect")) {
+    $("#grocerySortSelect").value = grocerySortMode();
+    $("#grocerySortSelect").onchange = () => {
+      state.settings.grocerySort = $("#grocerySortSelect").value;
+      saveState(state);
+      renderGrocery();
+    };
+  }
+
   $("#rebuildGroceryBtn").onclick = () => {
     if (!state.mealPlan) return toast("Generate a meal plan first");
     state.groceryList = buildGroceryList(state.mealPlan);
@@ -1701,13 +1812,33 @@ function bindGrocery() {
 }
 
 function groceryText(list) {
+  const storeId = groceryStoreId();
+  const store = storeMeta(storeId);
   const labels = list?.restrictionLabels || restrictionsSummary(list?.restrictions || getRestrictions());
-  const header = ["LiquidFloodie Grocery List"];
+  const enriched = ensureGroceryEnriched(list);
+  const items = sortedGroceryItems(enriched.items, storeId, grocerySortMode());
+  const totals = enriched.costTotals || groceryCostTotals(items);
+  const header = [
+    "LiquidFloodie Grocery List",
+    `Store path: ${store.label}`,
+    `Approx. total: ${formatMoney(totals.typical)} (range ${formatMoney(totals.min)} – ${formatMoney(totals.max)})`,
+  ];
   if (labels.length) header.push(`Dietary restrictions: ${labels.join(" · ")}`);
   header.push("");
-  return header
-    .concat((list.items || []).map((it) => `[${it.checked ? "x" : " "}] ${it.name} ×${it.qty}`))
-    .join("\n");
+  header.push("Tips: perimeter first · one-way aisle path · cold items last · WinCo bulk for nuts/grains");
+  header.push("");
+  for (const it of items) {
+    const nav = it.nav?.[storeId] || {};
+    const cost = it.cost || {};
+    header.push(
+      `[${it.checked ? "x" : " "}] ${it.name} ×${it.qty}  ·  ${formatMoney(cost.lineTypical)}  (${formatMoney(cost.typical)}/${cost.unit || "ea"})`
+    );
+    header.push(
+      `    ${nav.aisle || "?"} · ${nav.sideLabel || ""} · ${nav.depthLabel || ""} · ${nav.department || ""}`
+    );
+    if (nav.tip) header.push(`    Tip: ${nav.tip}`);
+  }
+  return header.join("\n");
 }
 
 function groceryQuery() {
@@ -1726,9 +1857,79 @@ function renderThirdParty(targetId) {
     .join("");
 }
 
+function renderGroceryNavTips() {
+  const el = $("#groceryNavTips");
+  if (!el) return;
+  el.innerHTML = `
+    <details class="grocery-tips-details">
+      <summary>Faster ways to find items in-store</summary>
+      <ul class="grocery-tips-list">
+        ${NAV_TECHNIQUES.map((t) => `<li><strong>${escapeHtml(t.title)}:</strong> ${escapeHtml(t.text)}</li>`).join("")}
+      </ul>
+      <p class="meta">Aisle numbers are educational approximations — layouts vary by remodel and city. Use the store app or ask staff when in doubt.</p>
+    </details>`;
+}
+
+function renderGroceryCostSummary(totals) {
+  const el = $("#groceryCostSummary");
+  if (!el) return;
+  if (!totals) {
+    el.innerHTML = "";
+    return;
+  }
+  el.innerHTML = `
+    <div class="cost-total-card">
+      <div class="cost-total-main">
+        <span class="meta">Approximate grocery total</span>
+        <strong class="cost-figure">${formatMoney(totals.typical)}</strong>
+      </div>
+      <p class="meta">Comparable range ${formatMoney(totals.min)} – ${formatMoney(totals.max)} · ${totals.itemCount} line item(s) · educational estimates only</p>
+    </div>`;
+}
+
+function groceryItemHtml(it, storeId) {
+  const nav = it.nav?.[storeId] || {};
+  const otherId = storeId === "walmart" ? "winco" : "walmart";
+  const other = it.nav?.[otherId] || {};
+  const cost = it.cost || {};
+  return `
+    <article class="grocery-item-card ${it.checked ? "done" : ""}">
+      <label class="grocery-item-check">
+        <input type="checkbox" data-gid="${escapeHtml(it.id)}" ${it.checked ? "checked" : ""} />
+        <span class="grocery-item-title">${iconFor(it)} <strong>${escapeHtml(it.name)}</strong> <span class="meta">×${it.qty}</span></span>
+      </label>
+      <div class="grocery-item-cost">
+        <span class="cost-line"><strong>${formatMoney(cost.lineTypical)}</strong> line</span>
+        <span class="meta">${formatMoney(cost.typical)} / ${escapeHtml(cost.unit || "each")} · range ${formatMoney(cost.min)}–${formatMoney(cost.max)}</span>
+      </div>
+      <div class="grocery-nav-block" data-store="${escapeHtml(storeId)}">
+        <p class="grocery-nav-primary">
+          <span class="nav-pill">${escapeHtml(nav.aisle || "Aisle ?")}</span>
+          <span class="nav-pill subtle">${escapeHtml(nav.sideLabel || "Side ?")}</span>
+          <span class="nav-pill subtle">${escapeHtml(nav.depthLabel || "Depth ?")}</span>
+        </p>
+        <p class="meta"><strong>${escapeHtml(nav.department || "")}</strong> · ${escapeHtml(nav.zone || "")}</p>
+        <p class="meta grocery-nav-tip">${escapeHtml(nav.tip || "")}</p>
+        <p class="meta grocery-nav-alt"><strong>${escapeHtml(other.storeLabel || otherId)}:</strong> ${escapeHtml(other.summary || other.aisle || "—")}</p>
+      </div>
+    </article>`;
+}
+
 function renderGrocery() {
   renderThirdParty("#thirdPartyGrocery");
+  renderGroceryNavTips();
   const out = $("#groceryOutput");
+  if (!out) return;
+
+  const storeId = groceryStoreId();
+  const sortMode = grocerySortMode();
+  const meta = storeMeta(storeId);
+  if ($("#groceryStoreSelect")) $("#groceryStoreSelect").value = storeId;
+  if ($("#grocerySortSelect")) $("#grocerySortSelect").value = sortMode;
+  if ($("#groceryStoreNote")) {
+    $("#groceryStoreNote").textContent = meta.note || "";
+  }
+
   const r = getRestrictions();
   const parts = restrictionsSummary(state.groceryList?.restrictions || r);
   if ($("#groceryRestrictionsStatus")) {
@@ -1736,40 +1937,61 @@ function renderGrocery() {
       ? `Grocery list respects: ${parts.join(" · ")}`
       : "Grocery list includes all plan ingredients (no restrictions active).";
   }
+
   if (!state.groceryList?.items?.length) {
+    renderGroceryCostSummary(null);
     out.innerHTML = `<div class="card"><p class="hint">No grocery list yet. Generate a weekly meal plan first. Lists only include ingredients allowed by your dietary restrictions.</p></div>`;
     return;
   }
-  const byCat = new Map();
-  for (const it of state.groceryList.items) {
-    if (!byCat.has(it.category)) byCat.set(it.category, []);
-    byCat.get(it.category).push(it);
+
+  state.groceryList = ensureGroceryEnriched(state.groceryList);
+  const items = sortedGroceryItems(state.groceryList.items, storeId, sortMode);
+  const totals = state.groceryList.costTotals || groceryCostTotals(items);
+  renderGroceryCostSummary(totals);
+
+  if (sortMode === "category") {
+    const byCat = new Map();
+    for (const it of items) {
+      if (!byCat.has(it.category)) byCat.set(it.category, []);
+      byCat.get(it.category).push(it);
+    }
+    out.innerHTML = [...byCat.entries()]
+      .map(
+        ([cat, group]) => `
+      <div class="card grocery-cat">
+        <h3>${iconFor({ category: cat })} ${escapeHtml(cat)}</h3>
+        ${group.map((it) => groceryItemHtml(it, storeId)).join("")}
+      </div>`
+      )
+      .join("");
+  } else {
+    // Group lightly by aisle for path shopping
+    const byAisle = new Map();
+    for (const it of items) {
+      const key = it.nav?.[storeId]?.aisle || "Other";
+      if (!byAisle.has(key)) byAisle.set(key, []);
+      byAisle.get(key).push(it);
+    }
+    out.innerHTML = [...byAisle.entries()]
+      .map(
+        ([aisle, group]) => `
+      <div class="card grocery-cat">
+        <h3>📍 ${escapeHtml(aisle)}</h3>
+        <p class="meta">${escapeHtml(group[0]?.nav?.[storeId]?.department || "")} · ${group.length} item(s)</p>
+        ${group.map((it) => groceryItemHtml(it, storeId)).join("")}
+      </div>`
+      )
+      .join("");
   }
-  out.innerHTML = [...byCat.entries()]
-    .map(
-      ([cat, items]) => `
-    <div class="card grocery-cat">
-      <h3>${iconFor({ category: cat })} ${escapeHtml(cat)}</h3>
-      ${items
-        .map(
-          (it) => `
-        <label class="grocery-item ${it.checked ? "done" : ""}">
-          <input type="checkbox" data-gid="${it.id}" ${it.checked ? "checked" : ""} />
-          <span>${iconFor(it)} ${escapeHtml(it.name)} <strong>×${it.qty}</strong></span>
-        </label>`
-        )
-        .join("")}
-    </div>`
-    )
-    .join("");
+
   out.onchange = (e) => {
     const t = e.target;
     if (t.dataset.gid == null) return;
-    const item = state.groceryList.items.find((i) => i.id === t.dataset.gid);
+    const item = state.groceryList.items.find((i) => String(i.id) === String(t.dataset.gid));
     if (item) {
       item.checked = t.checked;
       saveState(state);
-      t.closest(".grocery-item")?.classList.toggle("done", t.checked);
+      t.closest(".grocery-item-card")?.classList.toggle("done", t.checked);
     }
   };
 }
@@ -1939,7 +2161,6 @@ function saveCustomIngredientFromForm() {
   log("custom-ingredient", existingIdx >= 0 ? "updated" : "created", item.name);
   clearCustomIngredientForm();
   renderCustomIngredientsList();
-  renderLibrary();
   populateCustomBaseSelect();
   toast(existingIdx >= 0 ? `Updated “${item.name}”` : `Added “${item.name}” to your ingredients`);
 }
@@ -1956,7 +2177,6 @@ function deleteCustomIngredient(id) {
   log("custom-ingredient", "deleted", item.name);
   if ($("#ciEditId")?.value === id) clearCustomIngredientForm();
   renderCustomIngredientsList();
-  renderLibrary();
   populateCustomBaseSelect();
   toast(`Deleted “${item.name}”`);
 }
@@ -1998,87 +2218,6 @@ function renderCustomIngredientsList() {
   box.querySelectorAll("[data-del-ci]").forEach((btn) => {
     btn.onclick = () => deleteCustomIngredient(btn.dataset.delCi);
   });
-}
-
-/* ---------- Ingredients Library (Nutrients tab) with nutrition info ---------- */
-function bindLibrary() {
-  if ($("#iconLegend")) $("#iconLegend").innerHTML = iconLegendHtml();
-  $("#libSearch")?.addEventListener("input", () => {
-    state.analytics.searches = (state.analytics.searches || 0) + 1;
-    saveState(state);
-    renderLibrary();
-  });
-  $("#libCategory")?.addEventListener("change", renderLibrary);
-}
-
-function ingredientNutritionHtml(item) {
-  const n = nutritionForItem(item);
-  const microBits = Object.entries(MICRO_LABELS)
-    .map(([k, meta]) => `${meta.name}: ${n.micros?.[k] ?? 0} ${meta.unit}`)
-    .join(" · ");
-  const source = item.custom
-    ? "Your custom values (per typical blend portion)"
-    : "Estimated per typical blend portion";
-  return `
-    <div class="ing-nut-body">
-      <p class="meta"><strong>${escapeHtml(source)}</strong>${item.notes ? ` · ${escapeHtml(item.notes)}` : ""}</p>
-      <div class="ing-nut-macros">
-        <span><b>${n.calories}</b> kcal</span>
-        <span><b>${n.protein}</b>g protein</span>
-        <span><b>${n.carbs}</b>g carbs</span>
-        <span><b>${n.fat}</b>g fat</span>
-        <span><b>${n.fiber}</b>g fiber</span>
-        <span><b>~${n.waterMl}</b> ml water</span>
-      </div>
-      <p class="meta"><strong>Micronutrients:</strong> ${escapeHtml(microBits)}</p>
-      ${item.custom ? `<p class="meta"><em>Custom ingredient</em> — edit or delete under My Custom Ingredients.</p>` : ""}
-    </div>`;
-}
-
-function renderLibrary() {
-  if (!$("#libOutput")) return;
-  const q = $("#libSearch")?.value || "";
-  const catRaw = $("#libCategory")?.value || "";
-  const customOnly = catRaw === "__custom__";
-  const cat = customOnly ? "" : catRaw;
-  const r = getRestrictions();
-  const parts = restrictionsSummary(r);
-  const customCount = (state.customIngredients || []).length;
-  if ($("#libRestrictionsNote")) {
-    const base = parts.length
-      ? `Library filtered by: ${parts.join(" · ")}`
-      : "Showing whole-food ingredients (no restrictions active).";
-    $("#libRestrictionsNote").textContent = `${base}${customCount ? ` · ${customCount} custom ingredient(s) in catalog` : ""}`;
-  }
-  let all = filterIngredients(db.ingredients, r, q, cat);
-  if (customOnly) all = all.filter((i) => i.custom);
-  // Prefer custom ingredients first in results
-  all = [...all].sort((a, b) => {
-    if (!!a.custom !== !!b.custom) return a.custom ? -1 : 1;
-    return String(a.name).localeCompare(String(b.name));
-  });
-  if (!all.length) {
-    $("#libOutput").innerHTML = `<p class="hint">No ingredients match your search and dietary restrictions. Try clearing a filter, unchecking a restriction, or add a custom ingredient above.</p>`;
-    return;
-  }
-  $("#libOutput").innerHTML = all
-    .slice(0, 80)
-    .map((i) => {
-      const n = nutritionForItem(i);
-      return `
-    <details class="ing-detail ${i.custom ? "ing-detail-custom" : ""}" role="listitem">
-      <summary class="ing-detail-summary">
-        <span class="ico">${iconFor(i)}</span>
-        <span class="ing-detail-main">
-          <span class="name">${escapeHtml(i.name)}${i.custom ? ' <span class="badge-custom">Custom</span>' : ""}</span>
-          <span class="cat">${escapeHtml(i.category)}${(i.tags || []).length ? " · " + (i.tags || []).slice(0, 3).map(escapeHtml).join(" · ") : ""}</span>
-        </span>
-        <span class="ing-detail-kcal meta">${n.calories} kcal · P ${n.protein}g · C ${n.carbs}g · F ${n.fat}g</span>
-      </summary>
-      ${ingredientNutritionHtml(i)}
-    </details>`;
-    })
-    .join("");
 }
 
 /* ---------- Nutrients ---------- */
@@ -2143,7 +2282,6 @@ function barHtml(label, value, goal, unit = "") {
 
 function renderNutrients() {
   renderCustomIngredientsList();
-  renderLibrary();
   const g = goals();
   const plan = state.mealPlan;
   const sel = $("#nutrientDaySelect");
@@ -2309,10 +2447,6 @@ function bindSettings() {
   state.restrictions = getRestrictions();
   syncRestrictionControls();
 
-  $("#saveRestrictionsBtn")?.addEventListener("click", () => {
-    saveDietaryRestrictions("settings");
-    toast("Dietary restrictions saved — meal plan & grocery updated");
-  });
   $("#resetRestrictionsBtn")?.addEventListener("click", () => {
     state.restrictions = defaultRestrictions();
     applyRestrictionChange(true);
@@ -2363,29 +2497,40 @@ function bindSettings() {
     if (!file) return;
     try {
       state = importAll(await file.text());
+      state.restrictions = normalizeRestrictions(state.restrictions || defaultRestrictions());
+      if (!Array.isArray(state.customIngredients)) state.customIngredients = [];
+      if (!Array.isArray(state.customMeals)) state.customMeals = [];
+      rebuildIngredientDb();
+      ensureAutoMealPlan();
       toast("Imported");
       renderAll();
     } catch (err) {
       toast(err.message || "Import failed");
+    } finally {
+      e.target.value = "";
     }
   };
   $("#deletePlanBtn").onclick = () => {
     if (!state.mealPlan) return toast("No plan");
     if (!confirm("Move meal plan to trash?")) return;
     state = softDelete(state, "mealPlan");
+    ensureAutoMealPlan();
     renderAll();
   };
   $("#deleteGroceryBtn").onclick = () => {
     if (!state.groceryList) return toast("No list");
     if (!confirm("Move grocery list to trash?")) return;
     state = softDelete(state, "groceryList");
+    if (state.mealPlan) state.groceryList = buildGroceryList(state.mealPlan);
     renderAll();
   };
   $("#deleteAllBtn").onclick = () => {
-    if (!confirm("Delete all user data?")) return;
+    if (!confirm("Delete all user data on this device? (Your login account is kept.)")) return;
     state = softDelete(state, "all");
-    state = loadState();
+    rebuildIngredientDb();
+    ensureAutoMealPlan();
     renderAll();
+    toast("All app data cleared");
   };
   $("#sendFeedbackBtn").onclick = () => {
     const text = $("#feedbackText").value.trim();
@@ -2463,74 +2608,160 @@ function renderLogs() {
 
 function renderSettings() {
   syncRestrictionControls();
+  // Keep static form controls in sync with state (import / recover / delete / save)
+  if ($("#schedEnabled")) $("#schedEnabled").checked = !!state.schedule?.enabled;
+  if ($("#schedHour")) $("#schedHour").value = state.schedule?.hour ?? 8;
+  if ($("#schedMinute")) $("#schedMinute").value = state.schedule?.minute ?? 0;
+  if ($("#schedAutoRotate")) $("#schedAutoRotate").checked = !!state.schedule?.autoRotate;
+  if ($("#notifEnabled")) $("#notifEnabled").checked = !!state.settings?.notifications;
+  if ($("#displayName")) $("#displayName").value = state.gamification?.displayName || "Foodie";
+
   renderAccountPanel();
   renderGame();
-  renderThirdParty("#thirdPartySettings");
   renderLogs();
   const a = state.analytics;
-  $("#analyticsBox").innerHTML = `Sessions: ${a.sessions || 0}<br/>Plans: ${a.plansGenerated || 0}<br/>Grocery builds: ${a.groceriesBuilt || 0}<br/>Rotations: ${a.rotations || 0}<br/>Searches: ${a.searches || 0}<br/>Last open: ${a.lastOpen || "—"}`;
+  if ($("#analyticsBox")) {
+    $("#analyticsBox").innerHTML = `Sessions: ${a.sessions || 0}<br/>Plans: ${a.plansGenerated || 0}<br/>Grocery builds: ${a.groceriesBuilt || 0}<br/>Rotations: ${a.rotations || 0}<br/>Searches: ${a.searches || 0}<br/>Last open: ${a.lastOpen || "—"}`;
+  }
   const hist = state.schedule?.history || [];
-  $("#scheduleReport").innerHTML = hist.length
-    ? hist.slice(0, 8).map((h) => `${escapeHtml(h.at)} — ${escapeHtml(h.note)}`).join("<br/>")
-    : "No scheduled jobs yet.";
-  $("#securityBox").innerHTML = `<ul class="sec-list">
+  if ($("#scheduleReport")) {
+    $("#scheduleReport").innerHTML = hist.length
+      ? hist.slice(0, 8).map((h) => `${escapeHtml(h.at)} — ${escapeHtml(h.note)}`).join("<br/>")
+      : "No scheduled jobs yet.";
+  }
+  if ($("#securityBox")) {
+    $("#securityBox").innerHTML = `<ul class="sec-list">
     <li>PBKDF2-SHA-256 passwords (120k iterations)</li>
     <li>Security-question recovery with salted answer hash</li>
     <li>On-device data (localStorage + IndexedDB)</li>
     <li>CSP, nosniff, frame denial; see SECURITY.md</li>
   </ul>`;
-  $("#aboutMeta").textContent = `LiquidFloodie v1.2 · ${db.count} ingredients · Home / Weekly Plan / Grocery / Nutrients / Settings`;
+  }
+  if ($("#aboutMeta")) {
+    $("#aboutMeta").textContent = `LiquidFloodie v1.2 · ${db.count} ingredients · Home / Weekly Plan / Grocery / Nutrients / Settings`;
+  }
   const trash = loadTrash();
-  $("#trashList").innerHTML = trash.length
-    ? trash
-        .slice(0, 8)
-        .map((t) => `<div class="meta">${escapeHtml(t.kind)} · ${escapeHtml(t.deletedAt)} <button type="button" class="btn ghost" data-recover="${t.id}">Recover</button></div>`)
-        .join("")
-    : `<p class="meta">Trash empty.</p>`;
-  $("#trashList").onclick = (e) => {
-    const b = e.target.closest("[data-recover]");
-    if (!b) return;
-    try {
-      state = recoverFromTrash(state, b.dataset.recover);
-      renderAll();
-      toast("Recovered");
-    } catch (err) {
-      toast(err.message);
-    }
-  };
+  if ($("#trashList")) {
+    $("#trashList").innerHTML = trash.length
+      ? trash
+          .slice(0, 8)
+          .map((t) => `<div class="meta">${escapeHtml(t.kind)} · ${escapeHtml(t.deletedAt)} <button type="button" class="btn ghost" data-recover="${t.id}">Recover</button></div>`)
+          .join("")
+      : `<p class="meta">Trash empty.</p>`;
+    $("#trashList").onclick = (e) => {
+      const b = e.target.closest("[data-recover]");
+      if (!b) return;
+      try {
+        state = recoverFromTrash(state, b.dataset.recover);
+        state.restrictions = normalizeRestrictions(state.restrictions || defaultRestrictions());
+        if (!Array.isArray(state.customIngredients)) state.customIngredients = [];
+        rebuildIngredientDb();
+        ensureAutoMealPlan();
+        renderAll();
+        toast("Recovered");
+      } catch (err) {
+        toast(err.message);
+      }
+    };
+  }
 }
 
 /* ---------- Search / share ---------- */
+function ingredientQuickDetailHtml(item) {
+  const n = nutritionForItem(item);
+  const microBits = Object.entries(MICRO_LABELS)
+    .map(([k, meta]) => `${meta.name} ${n.micros?.[k] ?? 0} ${meta.unit}`)
+    .join(" · ");
+  const source = item.custom ? "Your custom values" : "Estimated per typical blend portion";
+  return `
+    <div class="search-detail" id="searchDetail" role="region" aria-label="Ingredient nutrition">
+      <div class="search-detail-head">
+        <strong>${iconFor(item)} ${escapeHtml(item.name)}</strong>
+        <span class="meta">${escapeHtml(item.category)}${item.custom ? " · custom" : ""}</span>
+      </div>
+      <p class="meta">${escapeHtml(source)}${item.notes ? ` · ${escapeHtml(item.notes)}` : ""}</p>
+      <p class="meta"><strong>${n.calories}</strong> kcal · P ${n.protein}g · C ${n.carbs}g · F ${n.fat}g · Fiber ${n.fiber}g · ~${n.waterMl} ml water</p>
+      <p class="meta"><strong>Micros:</strong> ${escapeHtml(microBits)}</p>
+      <div class="btn-row compact-row">
+        <button type="button" class="btn ghost" id="searchAddToCustomMeal" data-add-custom-ing="${escapeHtml(item.id)}">Add to custom meal</button>
+        <button type="button" class="btn ghost" id="searchCloseDetail">Close</button>
+      </div>
+    </div>`;
+}
+
+function renderQuickSearchResults(q) {
+  const box = $("#searchResults");
+  if (!box) return;
+  if (!q || q.length < 2) {
+    box.innerHTML = "";
+    return;
+  }
+  state.analytics.searches = (state.analytics.searches || 0) + 1;
+  saveState(state);
+  const hits = filterIngredients(db.ingredients, getRestrictions(), q).slice(0, 15);
+  if (!hits.length) {
+    box.innerHTML = `<p class="meta search-empty">No ingredients match “${escapeHtml(q)}” under your dietary restrictions.</p>`;
+    return;
+  }
+  box.innerHTML = hits
+    .map((i) => {
+      const n = nutritionForItem(i);
+      return `<button type="button" class="search-item" data-id="${i.id}" role="option">
+        <span class="search-item-main">${iconFor(i)} ${escapeHtml(i.name)}${i.custom ? ' <span class="badge-custom">Custom</span>' : ""}</span>
+        <span class="search-item-meta meta">${escapeHtml(i.category)} · ${n.calories} kcal · P ${n.protein}g · C ${n.carbs}g · F ${n.fat}g</span>
+      </button>`;
+    })
+    .join("");
+}
+
 function bindSearch() {
   $("#searchToggle").onclick = () => {
     $("#quickSearchBar").classList.toggle("hide");
-    if (!$("#quickSearchBar").classList.contains("hide")) $("#globalSearch").focus();
+    if (!$("#quickSearchBar").classList.contains("hide")) {
+      $("#globalSearch")?.focus();
+    } else if ($("#searchResults")) {
+      $("#searchResults").innerHTML = "";
+    }
   };
-  $("#globalSearch").addEventListener("input", () => {
-    const q = $("#globalSearch").value;
-    const box = $("#searchResults");
-    if (!q || q.length < 2) {
-      box.innerHTML = "";
+  $("#globalSearch")?.addEventListener("input", () => {
+    renderQuickSearchResults($("#globalSearch").value);
+  });
+  $("#searchResults")?.addEventListener("click", (e) => {
+    const close = e.target.closest("#searchCloseDetail");
+    if (close) {
+      renderQuickSearchResults($("#globalSearch")?.value || "");
       return;
     }
-    state.analytics.searches = (state.analytics.searches || 0) + 1;
-    saveState(state);
-    box.innerHTML = filterIngredients(db.ingredients, getRestrictions(), q)
-      .slice(0, 15)
-      .map((i) => `<button type="button" class="search-item" data-id="${i.id}">${iconFor(i)} ${escapeHtml(i.name)}</button>`)
-      .join("");
-  });
-  $("#searchResults").onclick = (e) => {
+    const addCustom = e.target.closest("#searchAddToCustomMeal, [data-add-custom-ing]");
+    if (addCustom) {
+      const id = addCustom.dataset.addCustomIng;
+      const item = findIngredient(id);
+      if (!item) return;
+      if (item.category === "base") {
+        customDraft.baseId = item.id;
+        populateCustomBaseSelect();
+      } else if (!customDraft.ingredientIds.includes(item.id)) {
+        if (customDraft.ingredientIds.length >= 5) {
+          toast("Maximum 5 ingredients in a custom meal");
+          return;
+        }
+        customDraft.ingredientIds.push(item.id);
+      }
+      showTab("plan");
+      $("#quickSearchBar")?.classList.add("hide");
+      if ($("#searchResults")) $("#searchResults").innerHTML = "";
+      renderCustomIngSelected();
+      toast(`Added “${item.name}” to custom meal builder`);
+      $("#customMealName")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     const b = e.target.closest("[data-id]");
     if (!b) return;
-    showTab("nutrients");
-    if ($("#libSearch")) {
-      $("#libSearch").value = db.ingredients.find((i) => i.id === b.dataset.id)?.name || "";
-      renderLibrary();
-      $("#ingredientsLibraryCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-    $("#quickSearchBar").classList.add("hide");
-  };
+    const item = findIngredient(b.dataset.id);
+    if (!item) return;
+    const box = $("#searchResults");
+    if (box) box.innerHTML = ingredientQuickDetailHtml(item);
+  });
 }
 
 function bindShare() {
@@ -2578,7 +2809,6 @@ function escapeHtml(s) {
 
 function renderAll() {
   renderHome();
-  renderLibrary();
   renderPlan();
   renderGrocery();
   renderNutrients();

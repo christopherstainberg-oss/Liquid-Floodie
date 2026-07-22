@@ -66,6 +66,10 @@ const DEFAULTS = {
     notifications: false,
     theme: "system",
     reducedMotion: false,
+    /** Preferred store path for grocery navigation */
+    groceryStore: "walmart",
+    /** aisle | category | name | cost */
+    grocerySort: "aisle",
   },
   /** Nutrients tracking (calories, macros, micros, water, fiber) */
   nutrients: {
@@ -188,9 +192,11 @@ export function softDelete(state, kind) {
   if (kind === "mealPlan") state.mealPlan = null;
   if (kind === "groceryList") state.groceryList = null;
   if (kind === "all") {
-    state.mealPlan = null;
-    state.groceryList = null;
-    state.preferredIds = [];
+    // Full wipe of on-device app data (account/session keys are separate)
+    const wiped = structuredClone(DEFAULTS);
+    saveState(wiped);
+    log("delete", "Soft-deleted all");
+    return wiped;
   }
   saveState(state);
   log("delete", `Soft-deleted ${kind}`);
@@ -214,7 +220,7 @@ export function recoverFromTrash(state, trashId) {
   if (entry.kind === "mealPlan") state.mealPlan = entry.payload;
   else if (entry.kind === "groceryList") state.groceryList = entry.payload;
   else if (entry.kind === "all" && entry.payload) {
-    Object.assign(state, deepMerge(state, entry.payload));
+    state = deepMerge(structuredClone(DEFAULTS), entry.payload);
   }
   saveState(state);
   log("recover", `Recovered ${entry.kind}`);

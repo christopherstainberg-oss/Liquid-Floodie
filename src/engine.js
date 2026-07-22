@@ -6,6 +6,8 @@
  * - Endless meal variations + step-by-step blend instructions
  */
 
+import { enrichGroceryItem, groceryCostTotals } from "./grocery-nav.js";
+
 /** Preset dietary restriction checkboxes (id → UI + matching rules) */
 export const RESTRICTION_PRESETS = [
   {
@@ -424,7 +426,7 @@ export function normalizeIngredientNutrition(input = {}) {
 
 /**
  * Build a user-created ingredient with optional macronutrients & micronutrients.
- * Used in the library, custom meals, meal generation pool, and grocery lists.
+ * Used in Quick Search, custom meals, meal generation pool, and grocery lists.
  *
  * @param {object} opts
  * @param {string} opts.name
@@ -861,9 +863,13 @@ export function generateMealPlan(db, options = {}) {
 }
 
 export function rotateMealPlan(existingPlan, db, options = {}) {
-  // Advance through endless pool; when exhausted, reseed for a fresh infinite set
+  // Advance through endless pool; when exhausted, reseed for a fresh infinite set.
+  // Prefer live form/state options so meals/day, ingredient count, and restrictions apply.
+  const mealsPerDay = options.mealsPerDay ?? existingPlan.mealsPerDay ?? 2;
+  const ingredientCount = options.ingredientCount ?? existingPlan.ingredientCount ?? 3;
+  const restrictions = options.restrictions ?? existingPlan.restrictions;
   const pool = existingPlan.variationPoolSize || 250;
-  let rotateOffset = (existingPlan.rotateOffset || 0) + (existingPlan.mealsPerDay || 2);
+  let rotateOffset = (existingPlan.rotateOffset || 0) + (mealsPerDay || 2);
   let seed = existingPlan.seed;
   if (rotateOffset >= pool) {
     rotateOffset = 0;
@@ -871,9 +877,9 @@ export function rotateMealPlan(existingPlan, db, options = {}) {
   }
   return generateMealPlan(db, {
     days: existingPlan.days,
-    mealsPerDay: existingPlan.mealsPerDay,
-    restrictions: existingPlan.restrictions,
-    ingredientCount: existingPlan.ingredientCount,
+    mealsPerDay,
+    restrictions,
+    ingredientCount,
     preferredIds: options.preferredIds || [],
     seed,
     rotateOffset,
@@ -928,6 +934,7 @@ export function rotateSingleMeal(existingPlan, db, { day, mealIndex = 0, preferr
  * Aggregate grocery list for plan.
  * Only includes ingredients that pass the plan's dietary restrictions
  * (defensive filter so grocery always correlates with user restrictions).
+ * Each item includes store navigation (Walmart + WinCo) and comparable cost.
  */
 export function buildGroceryList(mealPlan) {
   const r = normalizeRestrictions(mealPlan?.restrictions || defaultRestrictions());
@@ -951,10 +958,14 @@ export function buildGroceryList(mealPlan) {
       }
     }
   }
-  const items = [...map.values()].sort((a, b) => {
+  const raw = [...map.values()].sort((a, b) => {
     if (a.category === b.category) return a.name.localeCompare(b.name);
     return String(a.category).localeCompare(String(b.category));
   });
+
+  const items = raw.map((it) => enrichGroceryItem(it, it.qty));
+  const costTotals = groceryCostTotals(items);
+
   return {
     id: `grocery-${mealPlan?.id || "none"}`,
     planId: mealPlan?.id || null,
@@ -962,6 +973,7 @@ export function buildGroceryList(mealPlan) {
     restrictions: { ...r },
     restrictionLabels: restrictionsSummary(r),
     items,
+    costTotals,
   };
 }
 
@@ -999,9 +1011,10 @@ export function planToShareText(mealPlan) {
 export function thirdPartyLinks(query) {
   const q = encodeURIComponent(query || "whole food smoothie ingredients");
   return [
+    { name: "Walmart search", url: `https://www.walmart.com/search?q=${q}`, kind: "grocery" },
+    { name: "WinCo store finder", url: `https://www.wincofoods.com/stores`, kind: "grocery" },
     { name: "Instacart search", url: `https://www.instacart.com/store/search/${q}`, kind: "grocery" },
     { name: "Amazon Fresh search", url: `https://www.amazon.com/s?k=${q}`, kind: "grocery" },
     { name: "Allrecipes search", url: `https://www.allrecipes.com/search?q=${q}`, kind: "recipe" },
-    { name: "Simply Recipes search", url: `https://www.simplyrecipes.com/search?q=${q}`, kind: "recipe" },
   ];
 }

@@ -1,6 +1,6 @@
 # LiquidFloodie
 
-**Whole-food liquid meal planner** — milk-free, gluten-free blender meals with a 5-day plan, **step-by-step blend instructions**, grocery list, ingredient library (up to 5,000 items), login/recovery, rewards, and PWA install.
+**Whole-food liquid meal planner** — milk-free, gluten-free blender meals with a 5-day plan, **step-by-step blend instructions**, grocery list, Quick Search over ~5,000 ingredients, login/recovery, rewards, and PWA install.
 
 Built from `Liquid Foodie.md` in the Dietary Application Drive folder.
 
@@ -11,10 +11,10 @@ Built from `Liquid Foodie.md` in the Dietary Application Drive folder.
 - Default dietary restrictions: **no milk**, **no gluten**  
 - **5-day meal plan**, **≤ 2 meals/day**  
 - **Endless meal variations** with **rotate**  
-- **Grocery list** + third-party grocery/recipe links  
-- **Ingredients library** with consistent category **icon set** + quick search  
+- **Grocery list** with **Walmart / WinCo aisle navigation** (side + depth), comparable **item costs**, approximate **cart total**, and third-party grocery links  
+- **Quick Search** for ingredients (macros/micros + add to custom meal)  
 - **Login / register / password recovery** (security questions) + **Gravatar** profile pics  
-- **PWA** sections: **Home** (daily meals + ingredients library), **Weekly Meal Plan**, **Grocery List**, **Nutrients**, **Settings**  
+- **PWA** sections: **Home** (daily meals), **Weekly Meal Plan**, **Grocery List**, **Nutrients**, **Settings**  
 - **Nutrients**: calories, macronutrients, micronutrients, water intake, fiber intake + customizable goals  
 - Settings: **gamification**, **analytics**, **job scheduling + reports**, **import/export**, **delete/recovery**, **logging**, security/handoff  
 - **IndexedDB** durable store + optional **Web API**  

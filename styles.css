@@ -249,7 +249,7 @@ label textarea:focus {
 
 .search-results {
   margin-top: 6px;
-  max-height: 240px;
+  max-height: min(50vh, 360px);
   overflow: auto;
   background: var(--bg2);
   border: 1px solid var(--line);
@@ -259,21 +259,39 @@ label textarea:focus {
 .search-results:empty { display: none; }
 .search-item {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   width: 100%;
   text-align: left;
   padding: 11px 14px;
   border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
   background: transparent;
   color: inherit;
   cursor: pointer;
   font: inherit;
 }
+.search-item:last-child { border-bottom: 0; }
 .search-item:hover,
 .search-item:focus-visible {
   background: color-mix(in srgb, var(--brand) 12%, transparent);
 }
+.search-item-main { font-weight: 600; }
+.search-item-meta { font-size: 0.78rem; }
+.search-empty { padding: 12px 14px; margin: 0; }
+.search-detail {
+  padding: 14px;
+  text-align: left;
+}
+.search-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.search-detail .btn-row { margin-top: 10px; }
 
 /* ---------- Bottom nav (centered pill) ---------- */
 .tab-nav {
@@ -684,17 +702,113 @@ label.check {
 .chip-pick .chip { cursor: pointer; }
 
 /* ---------- Grocery ---------- */
+.grocery-controls { margin: 12px 0 8px; }
 .grocery-cat { margin-bottom: 14px; }
-.grocery-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
+.grocery-item-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 10px 0;
+  background: color-mix(in srgb, var(--bg) 45%, var(--bg2));
   text-align: left;
 }
-.grocery-item input { width: 18px; height: 18px; flex-shrink: 0; }
-.grocery-item.done span { text-decoration: line-through; color: var(--muted); }
+.grocery-item-card.done {
+  opacity: 0.72;
+}
+.grocery-item-card.done .grocery-item-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.grocery-item-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  margin: 0 0 8px;
+}
+.grocery-item-check input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.grocery-item-title { line-height: 1.3; }
+.grocery-item-cost {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: baseline;
+  margin: 0 0 8px;
+  padding-left: 28px;
+}
+.cost-line { color: var(--brand); font-size: 0.95rem; }
+.grocery-nav-block {
+  padding: 8px 0 0 28px;
+  border-top: 1px dashed color-mix(in srgb, var(--line) 80%, transparent);
+}
+.grocery-nav-primary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 6px;
+}
+.nav-pill {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand) 16%, var(--bg2));
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, var(--line));
+  color: var(--ink);
+}
+.nav-pill.subtle {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--bg) 50%, var(--bg2));
+  border-color: var(--line);
+  color: var(--muted);
+}
+.grocery-nav-tip { margin: 4px 0; }
+.grocery-nav-alt { margin: 4px 0 0; opacity: 0.9; }
+.grocery-cost-summary { margin-top: 12px; }
+.cost-total-card {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 40%, var(--line));
+  background: color-mix(in srgb, var(--brand) 10%, var(--bg2));
+}
+.cost-total-main {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.cost-figure {
+  font-size: 1.35rem;
+  color: var(--brand);
+}
+.grocery-nav-tips { margin-top: 12px; }
+.grocery-tips-details summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--brand);
+}
+.grocery-tips-list {
+  margin: 8px 0 0;
+  padding-left: 1.2rem;
+  text-align: left;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.grocery-tips-list li { margin: 6px 0; }
+.card-inset {
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 40%, var(--bg2));
+}
 
 /* ---------- Ingredient grid (centered cells) ---------- */
 .ing-grid {
@@ -779,76 +893,6 @@ label.check {
   vertical-align: middle;
   margin-left: 4px;
 }
-.ing-detail-custom {
-  border-color: color-mix(in srgb, var(--brand) 35%, var(--line));
-}
-
-/* Ingredients library with expandable nutrition (Nutrients tab) */
-.ing-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
-  max-height: min(70vh, 720px);
-  overflow: auto;
-}
-.ing-detail {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--bg) 40%, var(--bg2));
-  overflow: hidden;
-}
-.ing-detail[open] {
-  border-color: color-mix(in srgb, var(--brand) 45%, var(--line));
-}
-.ing-detail-summary {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 10px 12px;
-  align-items: center;
-  padding: 12px 14px;
-  cursor: pointer;
-  list-style: none;
-}
-.ing-detail-summary::-webkit-details-marker { display: none; }
-.ing-detail-summary .ico {
-  font-size: 1.4rem;
-  line-height: 1;
-}
-.ing-detail-main {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.ing-detail-main .name {
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-.ing-detail-main .cat {
-  font-size: 0.72rem;
-  color: var(--muted);
-  text-transform: capitalize;
-}
-.ing-detail-kcal {
-  font-size: 0.78rem;
-  text-align: right;
-  white-space: nowrap;
-}
-.ing-nut-body {
-  padding: 0 14px 14px;
-  border-top: 1px solid var(--line);
-}
-.ing-nut-macros {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  margin: 10px 0;
-  font-size: 0.88rem;
-}
-.ing-nut-macros b {
-  color: var(--brand);
-}
 .restriction-grid.compact .restriction-item {
   padding: 10px 12px;
 }
@@ -867,16 +911,6 @@ label.check {
 }
 .chip.rem {
   cursor: pointer;
-}
-@media (max-width: 640px) {
-  .ing-detail-summary {
-    grid-template-columns: auto 1fr;
-  }
-  .ing-detail-kcal {
-    grid-column: 2;
-    text-align: left;
-    white-space: normal;
-  }
 }
 
 /* ---------- Badges / game ---------- */
@@ -1001,26 +1035,6 @@ label.check {
   color: var(--muted);
 }
 .step-ol li { margin: 8px 0; }
-
-/* ---------- Icon legend (centered wrap) ---------- */
-.icon-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 10px 0 14px;
-  justify-content: center;
-}
-.icon-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.78rem;
-  color: var(--muted);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 4px 10px;
-  background: color-mix(in srgb, var(--bg) 40%, var(--bg2));
-}
 
 /* ---------- Links / community ---------- */
 .link-row {

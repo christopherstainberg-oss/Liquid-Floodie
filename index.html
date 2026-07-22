@@ -67,7 +67,7 @@
   </nav>
 
   <main id="main" class="wrap" tabindex="-1">
-    <!-- HOME: Daily Meals + nutrition summary (library lives under Nutrients) -->
+    <!-- HOME: Daily Meals + nutrition summary -->
     <section class="panel active" id="panel-home" aria-labelledby="home-title">
       <div class="hero card">
         <h2 id="home-title">Home</h2>
@@ -127,20 +127,12 @@
           </label>
         </div>
 
-        <h3 class="custom-subhead">Dietary Restrictions</h3>
-        <p class="hint">Check items to avoid. These drive daily meals, the weekly plan, and your grocery list. Syncs with Settings.</p>
-        <div class="restriction-grid compact" id="planRestrictionsForm" aria-label="Plan dietary restrictions"></div>
-        <div class="custom-restriction-row">
-          <label class="block-label">
-            Add custom restriction
-            <span class="inline-add">
-              <input type="text" id="planCustomRestriction" maxlength="40" placeholder="e.g. banana, nightshade…" autocomplete="off" />
-              <button type="button" class="btn" id="planAddCustomRestriction">Add</button>
-            </span>
-          </label>
-          <div id="planCustomRestrictionChips" class="chip-row" aria-live="polite"></div>
+        <div class="plan-restrictions-summary card-inset">
+          <p class="meta" id="planRestrictionsStatus" aria-live="polite"></p>
+          <div class="btn-row">
+            <button type="button" class="btn ghost" id="planOpenSettingsRestrictions">Manage Restrictions in Settings</button>
+          </div>
         </div>
-        <p class="meta" id="planRestrictionsStatus" aria-live="polite"></p>
 
         <label class="block-label">
           Favorite Ingredients (Optional — Max 5)
@@ -288,14 +280,37 @@
     <section class="panel" id="panel-grocery" aria-labelledby="grocery-title" hidden>
       <div class="card">
         <h2 id="grocery-title">Grocery List</h2>
-        <p class="hint">Built from your weekly meal plan using only ingredients that match your dietary restrictions. Check items as you shop.</p>
+        <p class="hint">Built from your weekly meal plan. Each item includes aisle navigation (Walmart &amp; WinCo), side of aisle, depth along the aisle, comparable unit cost, and line total. Costs are approximate educational estimates.</p>
         <p class="meta" id="groceryRestrictionsStatus" aria-live="polite"></p>
+
+        <div class="form-grid grocery-controls">
+          <label>
+            Shop path for
+            <select id="groceryStoreSelect">
+              <option value="walmart">Walmart</option>
+              <option value="winco">WinCo</option>
+            </select>
+          </label>
+          <label>
+            Sort list
+            <select id="grocerySortSelect">
+              <option value="aisle">Store path (aisle order)</option>
+              <option value="category">Category</option>
+              <option value="name">Name</option>
+              <option value="cost">Cost (high → low)</option>
+            </select>
+          </label>
+        </div>
+        <p class="meta" id="groceryStoreNote" aria-live="polite"></p>
+
         <div class="btn-row">
           <button type="button" class="btn primary" id="rebuildGroceryBtn">Rebuild from plan</button>
           <button type="button" class="btn ghost" id="exportGroceryBtn">Export list</button>
           <button type="button" class="btn ghost" id="shareGroceryBtn">Share</button>
         </div>
         <div id="thirdPartyGrocery" class="link-row"></div>
+        <div id="groceryNavTips" class="grocery-nav-tips" aria-label="Faster shopping techniques"></div>
+        <div id="groceryCostSummary" class="grocery-cost-summary" aria-live="polite"></div>
       </div>
       <div id="groceryOutput" aria-live="polite"></div>
     </section>
@@ -362,7 +377,7 @@
       <!-- Add custom ingredients with full nutrition -->
       <div class="card" id="customIngredientCard">
         <h3>Add Custom Ingredient</h3>
-        <p class="hint">Create your own whole-food ingredients with calories, macronutrients, micronutrients, and water. They appear in the library, custom meals, meal plans, and grocery lists.</p>
+        <p class="hint">Create your own whole-food ingredients with calories, macronutrients, micronutrients, and water. They appear in Quick Search, custom meals, meal plans, and grocery lists.</p>
 
         <input type="hidden" id="ciEditId" value="" />
 
@@ -495,37 +510,6 @@
         <div id="customIngredientsList" aria-live="polite"></div>
       </div>
 
-      <!-- Ingredients Library with nutritional information -->
-      <div class="card" id="ingredientsLibraryCard">
-        <h3>Ingredients Library</h3>
-        <p class="hint">Search whole foods (including your custom ingredients) that meet your dietary restrictions. Expand any ingredient for calories, macros, and micronutrients.</p>
-        <div class="icon-legend" id="iconLegend" aria-label="Ingredient icon legend"></div>
-        <div class="form-grid">
-          <label>
-            Search
-            <input type="search" id="libSearch" placeholder="e.g. spinach, broth, berry…" />
-          </label>
-          <label>
-            Category
-            <select id="libCategory">
-              <option value="">All</option>
-              <option value="base">Bases (Liquid)</option>
-              <option value="fruit">Fruit</option>
-              <option value="vegetable">Vegetable</option>
-              <option value="herb">Herb</option>
-              <option value="spice">Spice</option>
-              <option value="nut-seed">Nuts &amp; Seeds</option>
-              <option value="legume">Legume</option>
-              <option value="grain">Grain (GF)</option>
-              <option value="protein">Protein</option>
-              <option value="other">Other</option>
-              <option value="__custom__">My Custom Only</option>
-            </select>
-          </label>
-        </div>
-        <p class="meta" id="libRestrictionsNote" aria-live="polite"></p>
-        <div id="libOutput" class="ing-list" role="list"></div>
-      </div>
     </section>
 
     <!-- SETTINGS: account, gamification, analytics, scheduling, import/export, delete/recover -->
@@ -534,7 +518,7 @@
         <h2 id="settings-title">Settings</h2>
 
         <h3>Dietary Restrictions</h3>
-        <p class="hint">Check what you avoid. Checked items are blocked from daily meals, the weekly plan, the ingredients library, custom meals, and your grocery list. Add custom keywords to exclude specific foods. Changes save on this device.</p>
+        <p class="hint">Check what you avoid. Checked items are blocked from daily meals, the weekly plan, custom meals, Quick Search, and your grocery list. Add custom keywords to exclude specific foods. Changes save on this device.</p>
         <div class="restriction-grid" id="dietaryRestrictionsForm" aria-label="Settings dietary restrictions"></div>
         <div class="custom-restriction-row">
           <label class="block-label">
@@ -547,8 +531,8 @@
           <div id="settingsCustomRestrictionChips" class="chip-row" aria-live="polite"></div>
         </div>
         <p class="meta" id="restrictionsStatus" aria-live="polite"></p>
+        <p class="meta">Changes save automatically and regenerate your meal plan and grocery list.</p>
         <div class="btn-row">
-          <button type="button" class="btn primary" id="saveRestrictionsBtn">Save Dietary Restrictions</button>
           <button type="button" class="btn ghost" id="resetRestrictionsBtn">Reset To Defaults</button>
         </div>
 
@@ -602,9 +586,6 @@
           <button type="button" class="btn danger" id="clearLogsBtn">Clear logs</button>
         </div>
         <pre id="logsBox" class="log-box" aria-live="polite"></pre>
-
-        <h3>Third-party integrations</h3>
-        <div id="thirdPartySettings" class="link-row"></div>
 
         <h3>Feedback</h3>
         <label>Your feedback<textarea id="feedbackText" rows="3" placeholder="Ideas, bugs, meal requests…"></textarea></label>

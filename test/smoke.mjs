@@ -64,6 +64,11 @@ assert(plan.endlessCapacity > 1000, `endless capacity estimate large (got ${plan
 
 const grocery = engine.buildGroceryList(plan);
 assert(grocery.items.length > 0, "grocery list non-empty");
+assert(grocery.items.every((it) => it.nav?.walmart?.aisle && it.nav?.winco?.aisle), "grocery items have Walmart + WinCo aisle nav");
+assert(grocery.items.every((it) => it.nav?.walmart?.side && it.nav?.walmart?.depth), "grocery items have side + depth");
+assert(grocery.items.every((it) => it.cost?.typical > 0 && it.cost?.lineTypical > 0), "grocery items have comparable costs");
+assert(grocery.costTotals?.typical > 0, `grocery cost total > 0 (got ${grocery.costTotals?.typical})`);
+assert(grocery.costTotals?.min <= grocery.costTotals?.typical && grocery.costTotals?.typical <= grocery.costTotals?.max, "cost range ordered");
 
 const rotated = engine.rotateMealPlan(plan, INGREDIENT_DB);
 assert(rotated.rotateOffset !== plan.rotateOffset || rotated.seed !== plan.seed, "rotation changes plan");
