@@ -494,8 +494,20 @@ function bindAuth() {
       .join("");
   }
 
+  let loginInFlight = false;
+  let registerInFlight = false;
+
+  function clearAuthPasswordFields() {
+    for (const id of ["loginPassword", "regPassword", "recPassword"]) {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    }
+  }
+
   async function handleLogin(e) {
     e?.preventDefault?.();
+    e?.stopPropagation?.();
+    if (loginInFlight) return;
     clearAuthError();
     const form = $("#formLogin");
     const email = ($("#loginEmail")?.value || "").trim();
@@ -510,21 +522,28 @@ function bindAuth() {
       $("#loginPassword")?.focus();
       return;
     }
-    setAuthBusy(form, true);
+    loginInFlight = true;
+    setAuthBusy(form, true, "Signing in…");
     try {
       const user = await login(email, password);
       log("auth", "login ok", user.email);
+      clearAuthPasswordFields();
       await onAuthSuccess(user, `Welcome back, ${user.displayName}`);
     } catch (err) {
       console.error("login failed", err);
       showAuthError(err?.message || "Sign in failed.");
+      $("#loginPassword")?.focus();
+      $("#loginPassword")?.select?.();
     } finally {
+      loginInFlight = false;
       setAuthBusy(form, false);
     }
   }
 
   async function handleRegister(e) {
     e?.preventDefault?.();
+    e?.stopPropagation?.();
+    if (registerInFlight) return;
     clearAuthError();
     const form = $("#formRegister");
     const email = ($("#regEmail")?.value || "").trim();
@@ -545,7 +564,8 @@ function bindAuth() {
       $("#regAnswer")?.focus();
       return;
     }
-    setAuthBusy(form, true);
+    registerInFlight = true;
+    setAuthBusy(form, true, "Creating…");
     try {
       const user = await registerAccount({
         email,
@@ -555,11 +575,16 @@ function bindAuth() {
         securityAnswer: answer,
       });
       log("auth", "register ok", user.email);
+      // Prefill login email for later sessions; never leave secrets in the DOM
+      if ($("#loginEmail")) $("#loginEmail").value = email;
+      clearAuthPasswordFields();
+      if ($("#regAnswer")) $("#regAnswer").value = "";
       await onAuthSuccess(user, "Account created — welcome to LiquidFloodie");
     } catch (err) {
       console.error("register failed", err);
       showAuthError(err?.message || "Could not create account.");
     } finally {
+      registerInFlight = false;
       setAuthBusy(form, false);
     }
   }
@@ -647,24 +672,31 @@ function bindAuth() {
   const formLogin = $("#formLogin");
   const formRegister = $("#formRegister");
   const formRecover = $("#formRecover");
-  if (formLogin) formLogin.onsubmit = handleLogin;
-  if (formRegister) formRegister.onsubmit = handleRegister;
-  if (formRecover) formRecover.onsubmit = handleRecover;
 
-  // Explicit click handlers so buttons work even if submit is blocked by a parent
-  $("#loginSubmitBtn")?.addEventListener("click", (e) => {
-    e.preventDefault();
-    handleLogin(e);
-  });
-  $("#registerSubmitBtn")?.addEventListener("click", (e) => {
-    e.preventDefault();
-    handleRegister(e);
-  });
-  $("#recoverSubmitBtn")?.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleRecover(e);
-  });
+  /**
+   * Wire each auth form once. Prefer the submit event (Enter + button).
+   * Also listen on the submit button click as a fallback for environments where
+   * form submit is swallowed — inFlight guards prevent double password hashing.
+   */
+  function wireAuthForm(form, button, handler) {
+    if (!form) return;
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handler(e);
+    });
+    if (button) {
+      button.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handler(e);
+      });
+    }
+  }
+
+  wireAuthForm(formLogin, $("#loginSubmitBtn"), handleLogin);
+  wireAuthForm(formRegister, $("#registerSubmitBtn"), handleRegister);
+  wireAuthForm(formRecover, $("#recoverSubmitBtn"), handleRecover);
 
   $("#loadQuestionBtn")?.addEventListener("click", (e) => {
     e.preventDefault();

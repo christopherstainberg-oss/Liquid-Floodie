@@ -275,6 +275,64 @@ assert(dayBreak.meals.length > 0, "day breakdown has meals");
 const mealBreak = nutrition.nutritionBreakdownForMeal(plan.plan[0].meals[0]);
 assert(mealBreak.byIngredient.length >= 3, "meal breakdown lists base + ingredients");
 
+/* ---------- Auth: register → logout → login (incl. HTTP fallback hashing) ---------- */
+const store = new Map();
+globalThis.localStorage = {
+  getItem: (k) => (store.has(k) ? store.get(k) : null),
+  setItem: (k, v) => store.set(k, String(v)),
+  removeItem: (k) => store.delete(k),
+};
+const auth = await import(pathToFileURL(join(root, "src", "auth.js")).href);
+const authEmail = `smoke-${Date.now()}@example.com`;
+const authPass = "SmokeTest1";
+const regUser = await auth.registerAccount({
+  email: authEmail,
+  password: authPass,
+  displayName: "Smoke",
+  securityQuestion: "What was the name of your first pet?",
+  securityAnswer: "fluffy",
+});
+assert(!!regUser?.id && regUser.email === authEmail, "registerAccount returns public user");
+assert(!!auth.getCurrentUser(), "register creates session");
+const rawUsers = JSON.parse(localStorage.getItem("liquidfloodie.users.v1") || "[]");
+assert(rawUsers.length === 1 && rawUsers[0].passwordHash && rawUsers[0].hashMethod, "account persisted with hashMethod");
+auth.logout();
+assert(!auth.getCurrentUser(), "logout clears session");
+const loginUser = await auth.login(authEmail, authPass);
+assert(loginUser?.email === authEmail, "login with same password succeeds after logout");
+let badLogin = false;
+try {
+  await auth.login(authEmail, "WrongPass1");
+} catch {
+  badLogin = true;
+}
+assert(badLogin, "wrong password rejected");
+assert(typeof auth.cryptoReady() === "boolean", "cryptoReady is boolean");
+
+// Legacy-shaped account (missing hashMethod) must still accept the password
+{
+  // Register normally, then strip hashMethod to simulate pre-fix accounts.
+  const legacyEmail = `legacy-${Date.now()}@example.com`;
+  const legacyPass = "LegacyPass1";
+  await auth.registerAccount({
+    email: legacyEmail,
+    password: legacyPass,
+    displayName: "Legacy",
+    securityQuestion: "What city were you born in?",
+    securityAnswer: "portland",
+  });
+  auth.logout();
+  const all = JSON.parse(localStorage.getItem("liquidfloodie.users.v1") || "[]");
+  const idx = all.findIndex((u) => u.email === legacyEmail);
+  assert(idx >= 0, "legacy test user exists");
+  // Keep passwordHash/salt/iterations; drop hashMethod so login must probe methods
+  delete all[idx].hashMethod;
+  localStorage.setItem("liquidfloodie.users.v1", JSON.stringify(all));
+  localStorage.setItem("liquidfloodie.users.bak.v1", JSON.stringify(all));
+  const legacyLogin = await auth.login(legacyEmail, legacyPass);
+  assert(legacyLogin?.email === legacyEmail, "login works when hashMethod missing (multi-method)");
+}
+
 if (failed) {
   console.error(`\n${failed} failure(s)`);
   process.exit(1);

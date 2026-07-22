@@ -10,6 +10,13 @@
 
 const USERS_KEY = "liquidfloodie.users.v1";
 const SESSION_KEY = "liquidfloodie.session.v1";
+/** Secondary durable copy (survives some private-mode / storage flukes) */
+const USERS_BACKUP_KEY = "liquidfloodie.users.bak.v1";
+
+/** Iteration counts used by current + legacy accounts */
+const PBKDF2_ITERS = 120000;
+const SHA256_ITER_ROUNDS = 12000;
+const LEGACY_SHA256_ITERS = 50000;
 
 const SECURITY_QUESTIONS = [
   "What was the name of your first pet?",
@@ -21,14 +28,36 @@ const SECURITY_QUESTIONS = [
 
 function loadUsers() {
   try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+    const primary = JSON.parse(localStorage.getItem(USERS_KEY) || "null");
+    if (Array.isArray(primary) && primary.length) return primary;
   } catch {
-    return [];
+    /* fall through */
   }
+  try {
+    const bak = JSON.parse(localStorage.getItem(USERS_BACKUP_KEY) || "null");
+    if (Array.isArray(bak) && bak.length) {
+      // Restore primary from backup so later saves stay consistent
+      try {
+        localStorage.setItem(USERS_KEY, JSON.stringify(bak));
+      } catch {
+        /* ignore */
+      }
+      return bak;
+    }
+  } catch {
+    /* ignore */
+  }
+  return [];
 }
 
 function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  const raw = JSON.stringify(users);
+  localStorage.setItem(USERS_KEY, raw);
+  try {
+    localStorage.setItem(USERS_BACKUP_KEY, raw);
+  } catch {
+    /* quota / private mode — primary write already done */
+  }
 }
 
 function bufToHex(buf) {
@@ -161,8 +190,11 @@ async function deriveKey(password, saltHex, iterations = 120000, method = null) 
     return bufToHex(bits);
   }
 
-  // sha256-iter fallback — works without crypto.subtle
-  const rounds = Math.min(Number(iterations) || 50000, 50000);
+  // sha256-iter fallback — works without crypto.subtle (Docker LAN HTTP, etc.)
+  const requested = Number(iterations);
+  const fallback = SHA256_ITER_ROUNDS;
+  // Cap only extreme values; honor legacy 50k and current 12k counts exactly
+  const rounds = Math.max(1, Math.min(Number.isFinite(requested) && requested > 0 ? requested : fallback, 100000));
   let out = `${password}:${saltHex}`;
   for (let i = 0; i < rounds; i++) {
     out = sha256HexSync(`${out}:${i}:${saltHex}`);
@@ -172,6 +204,81 @@ async function deriveKey(password, saltHex, iterations = 120000, method = null) 
 
 function preferredHashMethod() {
   return hasSubtleCrypto() ? "pbkdf2" : "sha256-iter";
+}
+
+function preferredIterations(method = preferredHashMethod()) {
+  return method === "pbkdf2" ? PBKDF2_ITERS : SHA256_ITER_ROUNDS;
+}
+
+/**
+ * Verify password against stored hash. Tries the account's recorded method first,
+ * then alternate algorithms / iteration counts so HTTP↔HTTPS and legacy accounts still work.
+ * @returns {{ ok: true, method: string, iterations: number } | { ok: false }}
+ */
+async function passwordMatches(user, password) {
+  if (!user?.salt || !user?.passwordHash || password == null || password === "") {
+    return { ok: false };
+  }
+
+  const methods = [];
+  if (user.hashMethod) methods.push(user.hashMethod);
+  methods.push("pbkdf2", "sha256-iter");
+
+  const iterCandidates = [
+    user.iterations,
+    PBKDF2_ITERS,
+    SHA256_ITER_ROUNDS,
+    LEGACY_SHA256_ITERS,
+    50000,
+    12000,
+    10000,
+    8000,
+  ].filter((n) => Number.isFinite(Number(n)) && Number(n) > 0);
+
+  const seen = new Set();
+  for (const method of methods) {
+    for (const iterations of iterCandidates) {
+      const key = `${method}:${iterations}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      try {
+        const hash = await deriveKey(password, user.salt, Number(iterations), method);
+        if (hash === user.passwordHash) {
+          return { ok: true, method, iterations: Number(iterations) };
+        }
+      } catch {
+        /* method unavailable in this context (e.g. pbkdf2 without subtle) */
+      }
+    }
+  }
+  return { ok: false };
+}
+
+/** Re-hash password with the best method on this origin and persist. */
+async function upgradePasswordHash(user, password, matched) {
+  const nextMethod = preferredHashMethod();
+  const nextIters = preferredIterations(nextMethod);
+  // Skip rewrite if already on preferred scheme and same password verifies as stored method
+  if (user.hashMethod === nextMethod && user.iterations === nextIters && matched?.method === nextMethod) {
+    return user;
+  }
+  try {
+    const salt = randomSalt();
+    user.salt = salt;
+    user.iterations = nextIters;
+    user.hashMethod = nextMethod;
+    user.passwordHash = await deriveKey(password, salt, nextIters, nextMethod);
+    // Keep security-answer hashes usable: leave ansSalt / securityAnswerHash as-is
+    const users = loadUsers();
+    const idx = users.findIndex((u) => u.id === user.id);
+    if (idx >= 0) {
+      users[idx] = user;
+      saveUsers(users);
+    }
+  } catch {
+    /* non-fatal — login already succeeded */
+  }
+  return user;
 }
 
 function randomSalt(bytes = 16) {
@@ -254,16 +361,29 @@ export async function registerAccount({
 }) {
   const e = normalizeEmail(email);
   if (!e || !e.includes("@")) throw new Error("Enter a valid email.");
-  if (!password || password.length < 8) throw new Error("Password must be at least 8 characters.");
+  // Do not trim passwords — only reject empty / too short (spaces may be intentional)
+  if (typeof password !== "string" || password.length < 8) {
+    throw new Error("Password must be at least 8 characters.");
+  }
   if (!securityQuestion || !securityAnswer?.trim()) throw new Error("Choose a security question and answer.");
 
   const users = loadUsers();
   if (users.some((u) => u.email === e)) throw new Error("An account with this email already exists.");
 
   const hashMethod = preferredHashMethod();
-  const iterations = hashMethod === "pbkdf2" ? 120000 : 50000;
+  const iterations = preferredIterations(hashMethod);
   const salt = randomSalt();
   const passwordHash = await deriveKey(password, salt, iterations, hashMethod);
+  if (!passwordHash || passwordHash.length < 32) {
+    throw new Error("Could not secure your password on this device. Try again or use HTTPS.");
+  }
+
+  // Round-trip verify before saving so a bad hash never locks the user out
+  const verify = await deriveKey(password, salt, iterations, hashMethod);
+  if (verify !== passwordHash) {
+    throw new Error("Password hashing failed verification. Please try Create Account again.");
+  }
+
   const ansSalt = randomSalt();
   const securityAnswerHash = await deriveKey(
     securityAnswer.trim().toLowerCase(),
@@ -288,6 +408,23 @@ export async function registerAccount({
   };
   users.push(user);
   saveUsers(users);
+
+  // Confirm persistence — surface storage failures instead of a silent broken account
+  const persisted = loadUsers().find((u) => u.id === user.id && u.email === e);
+  if (!persisted?.passwordHash) {
+    throw new Error(
+      "Account could not be saved on this device (storage blocked or full). Allow site data / local storage and try again."
+    );
+  }
+
+  // Final login-path check with the same multi-method matcher used at Sign In
+  const match = await passwordMatches(persisted, password);
+  if (!match.ok) {
+    // Roll back the broken record so the email can be re-registered
+    saveUsers(users.filter((u) => u.id !== user.id));
+    throw new Error("Account save failed password check. Please try Create Account again.");
+  }
+
   setSession({ userId: user.id, at: new Date().toISOString() });
   return publicUser(user);
 }
@@ -295,12 +432,25 @@ export async function registerAccount({
 export async function login(email, password) {
   const e = normalizeEmail(email);
   const user = loadUsers().find((u) => u.email === e);
-  if (!user) throw new Error("No account found for that email.");
-  const method = user.hashMethod || "pbkdf2";
-  const hash = await deriveKey(password, user.salt, user.iterations || 120000, method);
-  if (hash !== user.passwordHash) throw new Error("Incorrect password.");
+  if (!user) {
+    throw new Error(
+      "No account found for that email on this device. Create an account here first (accounts do not sync across browsers/devices)."
+    );
+  }
+  if (typeof password !== "string" || password.length < 8) {
+    throw new Error("Password must be at least 8 characters.");
+  }
+
+  const match = await passwordMatches(user, password);
+  if (!match.ok) {
+    throw new Error(
+      "Incorrect password. Use Password Recovery with your security question if you forgot it, or create a new account on this device."
+    );
+  }
+
+  await upgradePasswordHash(user, password, match);
   setSession({ userId: user.id, at: new Date().toISOString() });
-  return publicUser(user);
+  return publicUser(loadUsers().find((u) => u.id === user.id) || user);
 }
 
 export function logout() {
@@ -365,12 +515,17 @@ export async function recoverPassword({ email, securityAnswer, newPassword }) {
 
   // Re-hash password with best method available on this origin
   const nextMethod = preferredHashMethod();
-  const iterations = nextMethod === "pbkdf2" ? 120000 : 50000;
+  const iterations = preferredIterations(nextMethod);
   const salt = randomSalt();
   user.salt = salt;
   user.iterations = iterations;
   user.hashMethod = nextMethod;
   user.passwordHash = await deriveKey(newPassword, salt, iterations, nextMethod);
+  // Round-trip check so recovery never stores an unverifiable hash
+  const check = await deriveKey(newPassword, salt, iterations, nextMethod);
+  if (check !== user.passwordHash) {
+    throw new Error("Could not set the new password. Please try again.");
+  }
   users[idx] = user;
   saveUsers(users);
   setSession({ userId: user.id, at: new Date().toISOString() });

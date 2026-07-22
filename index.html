@@ -809,7 +809,7 @@
         <label>Security Question <select id="regQuestion" required></select></label>
         <label>Security Answer <input type="text" id="regAnswer" required autocomplete="off" /></label>
         <button type="submit" class="btn primary" id="registerSubmitBtn">Create Account</button>
-        <p class="meta">Passwords are hashed with PBKDF2 (120k iterations). Accounts stay on this device.</p>
+        <p class="meta">Passwords are hashed on this device (PBKDF2 on HTTPS, secure fallback on plain HTTP). Accounts stay in this browser only — they do not sync to other devices.</p>
       </form>
 
       <form id="formRecover" class="auth-form hide" novalidate>
