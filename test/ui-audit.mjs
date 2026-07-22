@@ -406,15 +406,23 @@ if (groceryCbs > 0) {
   if (/walmart-grocery-layout-map\.png/i.test(diagramSrc)) pass("Diagram map view switches to labeled PNG");
   else fail("Diagram map toggle failed", diagramSrc);
 
-  // Switch store path
+  // Switch store path + WinCo map
   await page.select("#groceryStoreSelect", "winco");
   await sleep(400);
-  const winco = await page.evaluate(() =>
-    (document.querySelector(".grocery-item-card")?.innerText || "").toLowerCase().includes("winco") ||
-    document.getElementById("groceryStoreSelect")?.value === "winco"
-  );
-  if (winco) pass("Grocery store select switches to WinCo path");
-  else fail("WinCo store switch failed");
+  const winco = await page.evaluate(() => {
+    const src = document.getElementById("groceryMapImg")?.getAttribute("src") || "";
+    const title = document.getElementById("groceryMapTitle")?.textContent || "";
+    return {
+      select: document.getElementById("groceryStoreSelect")?.value,
+      src,
+      title,
+      hasWincoMap: /winco-grocery-layout/i.test(src),
+      titleOk: /winco/i.test(title),
+    };
+  });
+  if (winco.select === "winco" && winco.hasWincoMap && winco.titleOk) {
+    pass("Grocery store select switches to WinCo path and WinCo layout map");
+  } else fail("WinCo store switch / map failed", winco);
 
   const firstState = await page.evaluate(() => {
     const cb = document.querySelector("#groceryOutput input[type=checkbox][data-gid]");

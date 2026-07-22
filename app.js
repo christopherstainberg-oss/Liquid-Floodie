@@ -1859,13 +1859,35 @@ function renderThirdParty(targetId) {
 }
 
 const GROCERY_MAPS = {
-  illustrated: {
-    src: "walmart-grocery-layout-illustrated.jpg",
-    alt: "Illustrated Walmart Supercenter grocery floor plan with one-way shopping path from produce through center aisles to dairy and frozen",
+  walmart: {
+    illustrated: {
+      src: "walmart-grocery-layout-illustrated.jpg",
+      alt: "Illustrated Walmart Supercenter grocery floor plan with one-way shopping path from produce through center aisles to dairy and frozen",
+    },
+    diagram: {
+      src: "walmart-grocery-layout-map.png",
+      svg: "walmart-grocery-layout-map.svg",
+      alt: "Labeled Walmart Supercenter grocery layout diagram with aisle numbers, left/right sides, and department zones",
+    },
+    title: "Walmart Supercenter grocery layout map",
+    caption:
+      "Match each list item’s aisle · left/right · front/halfway/back to this map. Start at Produce (①), walk center aisles low→high, dairy & frozen last.",
+    brand: "Walmart",
   },
-  diagram: {
-    src: "walmart-grocery-layout-map.png",
-    alt: "Labeled Walmart Supercenter grocery layout diagram with aisle numbers, left/right sides, and department zones",
+  winco: {
+    illustrated: {
+      src: "winco-grocery-layout-illustrated.jpg",
+      alt: "Illustrated WinCo Foods grocery floor plan highlighting bulk bins, produce, center aisles, dairy, and frozen with a value shopping path",
+    },
+    diagram: {
+      src: "winco-grocery-layout-map.png",
+      svg: "winco-grocery-layout-map.svg",
+      alt: "Labeled WinCo Foods grocery layout diagram with bulk foods, aisle numbers, left/right sides, and department zones",
+    },
+    title: "WinCo Foods grocery layout map",
+    caption:
+      "WinCo path: Produce (①) → Bulk nuts/grains/spices (②) → center aisles → beverages → dairy → frozen last. Match each item’s aisle · side · depth tags to this map.",
+    brand: "WinCo",
   },
 };
 
@@ -1878,20 +1900,16 @@ function renderGroceryStoreMap() {
   if (!panel) return;
   const storeId = groceryStoreId();
   const view = groceryMapView();
-  const map = GROCERY_MAPS[view] || GROCERY_MAPS.illustrated;
+  const storeMaps = GROCERY_MAPS[storeId] || GROCERY_MAPS.walmart;
+  const map = storeMaps[view] || storeMaps.illustrated;
+  const diagram = storeMaps.diagram;
 
   panel.classList.remove("hide");
   if ($("#groceryMapTitle")) {
-    $("#groceryMapTitle").textContent =
-      storeId === "winco"
-        ? "Supercenter layout map (path guide for WinCo too)"
-        : "Walmart Supercenter grocery layout map";
+    $("#groceryMapTitle").textContent = storeMaps.title;
   }
   if ($("#groceryMapCaption")) {
-    $("#groceryMapCaption").textContent =
-      storeId === "winco"
-        ? "WinCo often puts bulk bins near the front/center — still use perimeter first (produce), then dry aisles, cold last. This Supercenter map shows the same side/depth logic used on each list item."
-        : "Match each list item’s aisle · left/right · front/halfway/back to this map. Start at Produce (①), walk center aisles low→high, dairy & frozen last.";
+    $("#groceryMapCaption").textContent = storeMaps.caption;
   }
   if ($("#groceryMapImg")) {
     $("#groceryMapImg").src = map.src;
@@ -1901,10 +1919,17 @@ function renderGroceryStoreMap() {
     $("#groceryMapLink").href = map.src;
   }
   if ($("#groceryMapFigCap")) {
+    const brand = storeMaps.brand || "store";
     $("#groceryMapFigCap").textContent =
       view === "diagram"
-        ? "Detailed aisle diagram — tap to open full size. Educational guide, not an official Walmart floor plan."
-        : "Illustrated shopping path — tap to open full size. Educational guide, not an official Walmart floor plan.";
+        ? `Detailed ${brand} aisle diagram — tap to open full size. Educational guide, not an official floor plan.`
+        : `Illustrated ${brand} shopping path — tap to open full size. Educational guide, not an official floor plan.`;
+  }
+  if ($("#groceryMapOpenSvg") && diagram?.svg) {
+    $("#groceryMapOpenSvg").href = diagram.svg;
+  }
+  if ($("#groceryMapOpenPng") && diagram?.src) {
+    $("#groceryMapOpenPng").href = diagram.src;
   }
   $$(".map-view-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.mapView === view);
@@ -1931,7 +1956,7 @@ function renderGroceryNavTips() {
       <ul class="grocery-tips-list">
         ${NAV_TECHNIQUES.map((t) => `<li><strong>${escapeHtml(t.title)}:</strong> ${escapeHtml(t.text)}</li>`).join("")}
       </ul>
-      <p class="meta">Aisle numbers are educational approximations — layouts vary by remodel and city. Use the Walmart app aisle locator or ask staff when in doubt. Map images above match the aisle · side · depth tags on each grocery item.</p>
+      <p class="meta">Aisle numbers are educational approximations — layouts vary by remodel and city. Use the store’s app or ask associates when in doubt. Map images above match the aisle · side · depth tags on each grocery item (Walmart Supercenter or WinCo bulk-first path).</p>
     </details>`;
 }
 
@@ -1996,8 +2021,8 @@ function renderGrocery() {
     $("#groceryStoreNote").textContent =
       (meta.note || "") +
       (storeId === "walmart"
-        ? " Use the layout map below with each item’s aisle · side · depth tags."
-        : " Use the layout map below for side/depth logic; prefer bulk bins early at WinCo.");
+        ? " Use the Walmart layout map below with each item’s aisle · side · depth tags."
+        : " Use the WinCo layout map below — hit bulk early for nuts, grains, beans, and spices.");
   }
 
   const r = getRestrictions();

@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780" role="img" aria-labelledby="title desc">
+  <title id="title">Typical WinCo Foods Grocery Layout Map</title>
+  <desc id="desc">Educational floor plan of a typical WinCo Foods grocery store highlighting bulk bins, produce, numbered aisles, left/right side guidance, and a value shopping path. Local store layouts vary.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0fdf4"/>
+      <stop offset="100%" stop-color="#dcfce7"/>
+    </linearGradient>
+    <linearGradient id="produceG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#bbf7d0"/>
+      <stop offset="100%" stop-color="#4ade80"/>
+    </linearGradient>
+    <linearGradient id="bulkG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="meatG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fecaca"/>
+      <stop offset="100%" stop-color="#f87171"/>
+    </linearGradient>
+    <linearGradient id="dairyG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#bfdbfe"/>
+      <stop offset="100%" stop-color="#60a5fa"/>
+    </linearGradient>
+    <linearGradient id="frozenG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a5f3fc"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="bakeryG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fed7aa"/>
+      <stop offset="100%" stop-color="#fb923c"/>
+    </linearGradient>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#14532d" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#15803d"/>
+    </marker>
+    <style>
+      .title { font: 700 26px "Segoe UI", system-ui, sans-serif; fill: #14532d; }
+      .subtitle { font: 500 12px "Segoe UI", system-ui, sans-serif; fill: #166534; }
+      .dept { font: 700 14px "Segoe UI", system-ui, sans-serif; fill: #14532d; }
+      .dept-sm { font: 600 11px "Segoe UI", system-ui, sans-serif; fill: #166534; }
+      .aisle { font: 700 11px "Segoe UI", system-ui, sans-serif; fill: #f0fdf4; }
+      .label { font: 600 10px "Segoe UI", system-ui, sans-serif; fill: #166534; }
+      .note { font: 500 11px "Segoe UI", system-ui, sans-serif; fill: #166534; }
+      .path { font: 700 11px "Segoe UI", system-ui, sans-serif; fill: #15803d; }
+      .legend { font: 600 11px "Segoe UI", system-ui, sans-serif; fill: #14532d; }
+      .wall { fill: #f7fee7; stroke: #16a34a; stroke-width: 3; }
+      .aisle-bar { fill: #15803d; stroke: #14532d; stroke-width: 1; }
+      .bulk-bar { fill: #b45309; stroke: #92400e; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="780" fill="url(#bg)"/>
+  <text x="40" y="40" class="title">Typical WinCo Foods — Grocery Layout Map</text>
+  <text x="40" y="60" class="subtitle">Educational shopping-path guide · Bulk-first value store · Layouts vary by remodel &amp; location · Not an official WinCo floor plan</text>
+
+  <!-- Outer shell -->
+  <rect x="40" y="88" width="900" height="562" class="wall" filter="url(#shadow)" rx="12"/>
+
+  <!-- ENTRANCE / CHECKOUTS -->
+  <rect x="50" y="578" width="880" height="62" fill="#bbf7d0" stroke="#16a34a" stroke-width="1.5" rx="6"/>
+  <text x="490" y="604" text-anchor="middle" class="dept">CHECKOUTS  ·  BAG YOUR OWN  ·  MEMBERSHIP / SERVICE</text>
+  <text x="490" y="624" text-anchor="middle" class="dept-sm">ENTRANCE / EXIT  ↓  (bulk + dry first · cold last · bring bags)</text>
+  <path d="M200,655 L200,675" stroke="#15803d" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M490,655 L490,675" stroke="#15803d" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M780,655 L780,675" stroke="#15803d" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="200" y="698" text-anchor="middle" class="path">IN</text>
+  <text x="490" y="698" text-anchor="middle" class="path">MAIN</text>
+  <text x="780" y="698" text-anchor="middle" class="path">OUT</text>
+
+  <!-- PRODUCE left-front (WinCo often produce near entry) -->
+  <rect x="50" y="100" width="210" height="200" fill="url(#produceG)" stroke="#16a34a" stroke-width="2" rx="8"/>
+  <text x="155" y="128" text-anchor="middle" class="dept">🥬 PRODUCE</text>
+  <text x="155" y="148" text-anchor="middle" class="dept-sm">Front / Left Perimeter</text>
+  <text x="155" y="175" text-anchor="middle" class="label">Fruit tables · Front</text>
+  <text x="155" y="192" text-anchor="middle" class="label">Value packs · Halfway</text>
+  <text x="155" y="209" text-anchor="middle" class="label">Bagged greens · Cooler wall</text>
+  <text x="155" y="226" text-anchor="middle" class="label">Fresh herbs · Back of produce</text>
+  <text x="155" y="252" text-anchor="middle" class="dept-sm">SIDE: Left tables / wet wall</text>
+  <text x="155" y="275" text-anchor="middle" class="path">① START HERE</text>
+
+  <!-- BULK (signature WinCo) center-left front -->
+  <rect x="270" y="100" width="240" height="200" fill="url(#bulkG)" stroke="#d97706" stroke-width="2" rx="8"/>
+  <text x="390" y="128" text-anchor="middle" class="dept">⚖️ BULK FOODS</text>
+  <text x="390" y="148" text-anchor="middle" class="dept-sm">WinCo signature · Scoop &amp; bag</text>
+  <text x="390" y="175" text-anchor="middle" class="label">Nuts &amp; seeds · Bins left/mid</text>
+  <text x="390" y="192" text-anchor="middle" class="label">Grains · rice · oats · GF</text>
+  <text x="390" y="209" text-anchor="middle" class="label">Dry beans · lentils</text>
+  <text x="390" y="226" text-anchor="middle" class="label">Spice wall · scoops front</text>
+  <text x="390" y="243" text-anchor="middle" class="label">Dried fruit · trail mix</text>
+  <text x="390" y="268" text-anchor="middle" class="path">② BULK FOR VALUE</text>
+  <text x="390" y="285" text-anchor="middle" class="dept-sm">LiquidFloodie: nuts · grains · legumes · spices</text>
+
+  <!-- BAKERY right front -->
+  <rect x="520" y="100" width="180" height="95" fill="url(#bakeryG)" stroke="#ea580c" stroke-width="2" rx="8"/>
+  <text x="610" y="135" text-anchor="middle" class="dept">🥖 BAKERY</text>
+  <text x="610" y="155" text-anchor="middle" class="dept-sm">Bread · Tortillas · Rolls</text>
+  <text x="610" y="175" text-anchor="middle" class="label">Often near produce / entry</text>
+
+  <!-- DELI right mid -->
+  <rect x="520" y="205" width="180" height="95" fill="#fde68a" stroke="#ca8a04" stroke-width="2" rx="8"/>
+  <text x="610" y="240" text-anchor="middle" class="dept">🥪 DELI</text>
+  <text x="610" y="260" text-anchor="middle" class="dept-sm">Sliced meats · salads</text>
+  <text x="610" y="280" text-anchor="middle" class="label">Right mid-perimeter</text>
+
+  <!-- MEAT back wall -->
+  <rect x="710" y="100" width="220" height="115" fill="url(#meatG)" stroke="#dc2626" stroke-width="2" rx="8"/>
+  <text x="820" y="135" text-anchor="middle" class="dept">🥩 MEAT &amp; SEAFOOD</text>
+  <text x="820" y="155" text-anchor="middle" class="dept-sm">Back / Right Wall</text>
+  <text x="820" y="178" text-anchor="middle" class="label">Poultry · beef · fish cases</text>
+  <text x="820" y="195" text-anchor="middle" class="label">SIDE: Outer cooler wall</text>
+
+  <!-- DAIRY right back -->
+  <rect x="710" y="225" width="220" height="140" fill="url(#dairyG)" stroke="#2563eb" stroke-width="2" rx="8"/>
+  <text x="820" y="258" text-anchor="middle" class="dept">🥛 DAIRY</text>
+  <text x="820" y="278" text-anchor="middle" class="dept-sm">Right / Back Coolers</text>
+  <text x="820" y="305" text-anchor="middle" class="label">Milk alts · eggs · juice</text>
+  <text x="820" y="322" text-anchor="middle" class="label">Yogurt · cheese</text>
+  <text x="820" y="345" text-anchor="middle" class="path">⑤ COLD LATE</text>
+
+  <!-- FROZEN lower right / mid -->
+  <rect x="710" y="375" width="220" height="185" fill="url(#frozenG)" stroke="#0891b2" stroke-width="2" rx="8"/>
+  <text x="820" y="415" text-anchor="middle" class="dept">❄️ FROZEN</text>
+  <text x="820" y="440" text-anchor="middle" class="dept-sm">Freezer aisles / wall</text>
+  <text x="820" y="465" text-anchor="middle" class="label">Frozen fruit · veg</text>
+  <text x="820" y="482" text-anchor="middle" class="label">Plant proteins</text>
+  <text x="820" y="499" text-anchor="middle" class="label">Endcaps · ice cream</text>
+  <text x="820" y="530" text-anchor="middle" class="path">⑥ FREEZER LAST</text>
+
+  <!-- CENTER AISLES -->
+  <rect x="50" y="315" width="645" height="250" fill="#f7fee7" stroke="#22c55e" stroke-width="2" rx="8"/>
+  <text x="372" y="340" text-anchor="middle" class="dept">CENTER AISLES — Packaged Grocery</text>
+  <text x="372" y="358" text-anchor="middle" class="dept-sm">After bulk · walk aisles low→high · LEFT side then RIGHT · Front · Halfway · Back</text>
+
+  <text x="70" y="380" class="label">L</text>
+  <text x="665" y="380" class="label">R</text>
+
+  <rect x="80" y="368" width="580" height="16" class="bulk-bar" rx="3"/>
+  <text x="370" y="380" text-anchor="middle" class="aisle">A3–4  Packaged nuts · snacks (bulk usually cheaper)</text>
+
+  <rect x="80" y="390" width="580" height="16" class="aisle-bar" rx="3"/>
+  <text x="370" y="402" text-anchor="middle" class="aisle">A4–5  Baking · jarred spices · extracts</text>
+
+  <rect x="80" y="412" width="580" height="16" class="aisle-bar" rx="3"/>
+  <text x="370" y="424" text-anchor="middle" class="aisle">A5–6  Rice · grains · cereal · GF oats</text>
+
+  <rect x="80" y="434" width="580" height="16" class="aisle-bar" rx="3"/>
+  <text x="370" y="446" text-anchor="middle" class="aisle">A6–7  Dry beans · canned beans · legumes</text>
+
+  <rect x="80" y="456" width="580" height="16" class="aisle-bar" rx="3"/>
+  <text x="370" y="468" text-anchor="middle" class="aisle">A8–9  Condiments · oils · sauces · “other”</text>
+
+  <rect x="80" y="478" width="580" height="16" class="aisle-bar" rx="3"/>
+  <text x="370" y="490" text-anchor="middle" class="aisle">A10–12  Beverages · water · shelf-stable juice / bases</text>
+
+  <rect x="80" y="500" width="580" height="16" class="aisle-bar" rx="3"/>
+  <text x="370" y="512" text-anchor="middle" class="aisle">A13–14  International · organic / natural bay</text>
+
+  <rect x="80" y="522" width="580" height="16" class="aisle-bar" rx="3"/>
+  <text x="370" y="534" text-anchor="middle" class="aisle">A15+  Household edge of grocery (if present)</text>
+
+  <text x="100" y="558" class="path">FRONT →</text>
+  <text x="320" y="558" class="path">HALFWAY</text>
+  <text x="540" y="558" class="path">← BACK</text>
+  <line x1="100" y1="545" x2="640" y2="545" stroke="#15803d" stroke-width="2" stroke-dasharray="6 4"/>
+
+  <!-- Side legend panel -->
+  <rect x="960" y="88" width="220" height="562" fill="#f7fee7" stroke="#16a34a" stroke-width="2" rx="12" filter="url(#shadow)"/>
+  <text x="1070" y="118" text-anchor="middle" class="dept">LEGEND &amp; PATH</text>
+
+  <rect x="980" y="138" width="18" height="18" fill="#4ade80" stroke="#16a34a" rx="3"/>
+  <text x="1008" y="151" class="legend">Produce / Fresh</text>
+  <rect x="980" y="166" width="18" height="18" fill="#fbbf24" stroke="#d97706" rx="3"/>
+  <text x="1008" y="179" class="legend">Bulk foods (value!)</text>
+  <rect x="980" y="194" width="18" height="18" fill="#fb923c" stroke="#ea580c" rx="3"/>
+  <text x="1008" y="207" class="legend">Bakery / Deli</text>
+  <rect x="980" y="222" width="18" height="18" fill="#f87171" stroke="#dc2626" rx="3"/>
+  <text x="1008" y="235" class="legend">Meat wall</text>
+  <rect x="980" y="250" width="18" height="18" fill="#60a5fa" stroke="#2563eb" rx="3"/>
+  <text x="1008" y="263" class="legend">Dairy coolers</text>
+  <rect x="980" y="278" width="18" height="18" fill="#22d3ee" stroke="#0891b2" rx="3"/>
+  <text x="1008" y="291" class="legend">Frozen</text>
+  <rect x="980" y="306" width="18" height="18" fill="#15803d" rx="3"/>
+  <text x="1008" y="319" class="legend">Numbered dry aisles</text>
+
+  <text x="1070" y="355" text-anchor="middle" class="dept">WINCO PATH</text>
+  <text x="980" y="380" class="path">① Produce</text>
+  <text x="980" y="400" class="path">② Bulk (nuts/grains/spices)</text>
+  <text x="980" y="420" class="path">③ Center aisles A3→A12</text>
+  <text x="980" y="440" class="path">④ Beverages / bases</text>
+  <text x="980" y="460" class="path">⑤ Dairy / chilled juice</text>
+  <text x="980" y="480" class="path">⑥ Frozen last</text>
+  <text x="980" y="500" class="path">⑦ Bag your own checkout</text>
+
+  <text x="1070" y="540" text-anchor="middle" class="dept">SIDE &amp; DEPTH</text>
+  <text x="980" y="565" class="legend">LEFT = left side of aisle</text>
+  <text x="980" y="585" class="legend">RIGHT = right side of aisle</text>
+  <text x="980" y="605" class="legend">FRONT = entrance end</text>
+  <text x="980" y="625" class="legend">HALFWAY = mid-run</text>
+
+  <text x="40" y="730" class="note">LiquidFloodie maps WinCo categories to bulk + aisle zones (nuts/grains/beans/spices → Bulk; bases → A10–12; produce → Produce).</text>
+  <text x="40" y="750" class="note">Bring reusable bags · scoop bulk with a clean bag &amp; write PLU · ask associates for remodel changes. Educational diagram only.</text>
+  <text x="40" y="770" class="note">© Educational diagram for LiquidFloodie · Not affiliated with WinCo Foods, Inc.</text>
+</svg>
