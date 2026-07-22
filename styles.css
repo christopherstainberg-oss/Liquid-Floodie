@@ -788,6 +788,53 @@ label.check {
   font-size: 1.35rem;
   color: var(--brand);
 }
+.grocery-map-panel {
+  margin-top: 14px;
+  padding: 14px !important;
+}
+.grocery-map-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.grocery-map-title {
+  margin: 0;
+  font-size: 1.05rem;
+  text-align: left;
+}
+.grocery-map-toggles {
+  margin: 0;
+  gap: 6px;
+}
+.map-view-btn.active {
+  background: color-mix(in srgb, var(--brand) 18%, transparent);
+  color: var(--brand);
+  font-weight: 700;
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--line));
+}
+.grocery-map-figure {
+  margin: 10px 0 8px;
+  padding: 0;
+  text-align: center;
+}
+.grocery-map-img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background: var(--bg2);
+  cursor: zoom-in;
+}
+.grocery-map-figure figcaption {
+  margin-top: 8px;
+  text-align: left;
+}
 .grocery-nav-tips { margin-top: 12px; }
 .grocery-tips-details summary {
   cursor: pointer;

@@ -309,6 +309,28 @@
           <button type="button" class="btn ghost" id="shareGroceryBtn">Share</button>
         </div>
         <div id="thirdPartyGrocery" class="link-row"></div>
+
+        <div class="grocery-map-panel card-inset" id="groceryMapPanel" aria-label="Store layout map">
+          <div class="grocery-map-head">
+            <h3 class="grocery-map-title" id="groceryMapTitle">Store layout map</h3>
+            <div class="btn-row grocery-map-toggles" role="group" aria-label="Map style">
+              <button type="button" class="btn ghost map-view-btn active" data-map-view="illustrated" id="mapViewIllustrated">Illustrated path</button>
+              <button type="button" class="btn ghost map-view-btn" data-map-view="diagram" id="mapViewDiagram">Aisle diagram</button>
+            </div>
+          </div>
+          <p class="meta" id="groceryMapCaption"></p>
+          <figure class="grocery-map-figure">
+            <a id="groceryMapLink" href="walmart-grocery-layout-illustrated.jpg" target="_blank" rel="noopener noreferrer" title="Open full-size map">
+              <img id="groceryMapImg" class="grocery-map-img" src="walmart-grocery-layout-illustrated.jpg" alt="Typical Walmart Supercenter grocery layout map with shopping path" width="1200" height="780" loading="lazy" />
+            </a>
+            <figcaption class="meta" id="groceryMapFigCap">Tap map to open full size. Educational guide — not an official store floor plan.</figcaption>
+          </figure>
+          <div class="btn-row">
+            <a class="btn ghost" id="groceryMapOpenSvg" href="walmart-grocery-layout-map.svg" target="_blank" rel="noopener noreferrer">Open SVG diagram</a>
+            <a class="btn ghost" id="groceryMapOpenPng" href="walmart-grocery-layout-map.png" target="_blank" rel="noopener noreferrer">Open PNG diagram</a>
+          </div>
+        </div>
+
         <div id="groceryNavTips" class="grocery-nav-tips" aria-label="Faster shopping techniques"></div>
         <div id="groceryCostSummary" class="grocery-cost-summary" aria-live="polite"></div>
       </div>

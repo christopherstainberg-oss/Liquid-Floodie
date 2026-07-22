@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780" role="img" aria-labelledby="title desc">
+  <title id="title">Typical Walmart Supercenter Grocery Layout Map</title>
+  <desc id="desc">Educational floor plan of a typical Walmart Supercenter grocery area showing perimeter departments, numbered center aisles, left/right side guidance, and shopping path. Local store layouts vary.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff7ed"/>
+      <stop offset="100%" stop-color="#ffedd5"/>
+    </linearGradient>
+    <linearGradient id="produceG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#bbf7d0"/>
+      <stop offset="100%" stop-color="#86efac"/>
+    </linearGradient>
+    <linearGradient id="meatG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fecaca"/>
+      <stop offset="100%" stop-color="#fca5a5"/>
+    </linearGradient>
+    <linearGradient id="dairyG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#bfdbfe"/>
+      <stop offset="100%" stop-color="#93c5fd"/>
+    </linearGradient>
+    <linearGradient id="frozenG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a5f3fc"/>
+      <stop offset="100%" stop-color="#67e8f9"/>
+    </linearGradient>
+    <linearGradient id="bakeryG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#fcd34d"/>
+    </linearGradient>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#9a3412" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#ea580c"/>
+    </marker>
+    <style>
+      .title { font: 700 28px "Segoe UI", system-ui, sans-serif; fill: #431407; }
+      .subtitle { font: 500 13px "Segoe UI", system-ui, sans-serif; fill: #9a3412; }
+      .dept { font: 700 14px "Segoe UI", system-ui, sans-serif; fill: #431407; }
+      .dept-sm { font: 600 11px "Segoe UI", system-ui, sans-serif; fill: #7c2d12; }
+      .aisle { font: 700 12px "Segoe UI", system-ui, sans-serif; fill: #fff7ed; }
+      .aisle-sub { font: 500 9px "Segoe UI", system-ui, sans-serif; fill: #ffedd5; }
+      .label { font: 600 10px "Segoe UI", system-ui, sans-serif; fill: #9a3412; }
+      .note { font: 500 11px "Segoe UI", system-ui, sans-serif; fill: #9a3412; }
+      .path { font: 700 11px "Segoe UI", system-ui, sans-serif; fill: #ea580c; }
+      .legend { font: 600 11px "Segoe UI", system-ui, sans-serif; fill: #431407; }
+      .wall { fill: #fffbeb; stroke: #ea580c; stroke-width: 3; }
+      .aisle-bar { fill: #c2410c; stroke: #9a3412; stroke-width: 1; rx: 4; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="780" fill="url(#bg)"/>
+  <text x="40" y="42" class="title">Typical Walmart Supercenter — Grocery Layout Map</text>
+  <text x="40" y="64" class="subtitle">Educational shopping-path guide · Layouts vary by remodel &amp; location · Not an official Walmart floor plan</text>
+
+  <!-- Outer store shell -->
+  <rect x="40" y="90" width="900" height="560" class="wall" filter="url(#shadow)" rx="12"/>
+
+  <!-- ENTRANCE / CHECKOUTS (front) -->
+  <rect x="50" y="580" width="880" height="60" fill="#fed7aa" stroke="#ea580c" stroke-width="1.5" rx="6"/>
+  <text x="490" y="605" text-anchor="middle" class="dept">CHECKOUTS  ·  SELF-CHECKOUT  ·  CUSTOMER SERVICE</text>
+  <text x="490" y="625" text-anchor="middle" class="dept-sm">ENTRANCE / EXIT  ↓  (shop dry goods first, cold last)</text>
+
+  <!-- Entrance arrows -->
+  <path d="M200,655 L200,675" stroke="#ea580c" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M490,655 L490,675" stroke="#ea580c" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M780,655 L780,675" stroke="#ea580c" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="200" y="698" text-anchor="middle" class="path">IN</text>
+  <text x="490" y="698" text-anchor="middle" class="path">MAIN</text>
+  <text x="780" y="698" text-anchor="middle" class="path">OUT</text>
+
+  <!-- PRODUCE (right front perimeter) -->
+  <rect x="700" y="100" width="230" height="220" fill="url(#produceG)" stroke="#16a34a" stroke-width="2" rx="8"/>
+  <text x="815" y="128" text-anchor="middle" class="dept">🥬 PRODUCE</text>
+  <text x="815" y="148" text-anchor="middle" class="dept-sm">Front / Right Perimeter</text>
+  <text x="815" y="175" text-anchor="middle" class="label">Fruit tables · Front of section</text>
+  <text x="815" y="192" text-anchor="middle" class="label">Roots / bulk produce · Halfway</text>
+  <text x="815" y="209" text-anchor="middle" class="label">Bagged salads · Cooler wall</text>
+  <text x="815" y="226" text-anchor="middle" class="label">Fresh herbs · Back of produce</text>
+  <text x="815" y="255" text-anchor="middle" class="dept-sm">SIDE: Right wall / misted coolers</text>
+  <text x="815" y="275" text-anchor="middle" class="dept-sm">LiquidFloodie: fruit · veg · herbs</text>
+  <text x="815" y="300" text-anchor="middle" class="path">① START HERE</text>
+
+  <!-- BAKERY (right mid) -->
+  <rect x="700" y="330" width="230" height="80" fill="url(#bakeryG)" stroke="#d97706" stroke-width="2" rx="8"/>
+  <text x="815" y="360" text-anchor="middle" class="dept">🥖 BAKERY</text>
+  <text x="815" y="380" text-anchor="middle" class="dept-sm">Bread · Tortillas · GF options</text>
+  <text x="815" y="398" text-anchor="middle" class="label">Often next to produce wall</text>
+
+  <!-- DELI (right back corner) -->
+  <rect x="700" y="420" width="110" height="145" fill="#fde68a" stroke="#ca8a04" stroke-width="2" rx="8"/>
+  <text x="755" y="460" text-anchor="middle" class="dept">🥪 DELI</text>
+  <text x="755" y="485" text-anchor="middle" class="dept-sm">Sliced meats</text>
+  <text x="755" y="502" text-anchor="middle" class="dept-sm">Prepared foods</text>
+  <text x="755" y="530" text-anchor="middle" class="label">Back-right</text>
+
+  <!-- MEAT (back wall) -->
+  <rect x="250" y="100" width="440" height="70" fill="url(#meatG)" stroke="#dc2626" stroke-width="2" rx="8"/>
+  <text x="470" y="130" text-anchor="middle" class="dept">🥩 MEAT · SEAFOOD · POULTRY  (Back Wall)</text>
+  <text x="470" y="152" text-anchor="middle" class="dept-sm">Protein wall · SIDE: Outer back wall · DEPTH: Full run left→right</text>
+
+  <!-- DAIRY (left back / left wall) -->
+  <rect x="50" y="100" width="190" height="280" fill="url(#dairyG)" stroke="#2563eb" stroke-width="2" rx="8"/>
+  <text x="145" y="140" text-anchor="middle" class="dept">🥛 DAIRY</text>
+  <text x="145" y="162" text-anchor="middle" class="dept-sm">Left / Back Wall</text>
+  <text x="145" y="190" text-anchor="middle" class="label">Milk alternatives</text>
+  <text x="145" y="207" text-anchor="middle" class="label">Eggs · Butter</text>
+  <text x="145" y="224" text-anchor="middle" class="label">Yogurt · Cheese</text>
+  <text x="145" y="250" text-anchor="middle" class="label">Refrigerated juice</text>
+  <text x="145" y="267" text-anchor="middle" class="label">SIDE: Cooler wall</text>
+  <text x="145" y="295" text-anchor="middle" class="dept-sm">LiquidFloodie bases:</text>
+  <text x="145" y="312" text-anchor="middle" class="dept-sm">chilled juice / coconut water</text>
+  <text x="145" y="345" text-anchor="middle" class="path">⑤ COLD LAST</text>
+
+  <!-- FROZEN (left mid-back aisles area) -->
+  <rect x="50" y="390" width="190" height="175" fill="url(#frozenG)" stroke="#0891b2" stroke-width="2" rx="8"/>
+  <text x="145" y="430" text-anchor="middle" class="dept">❄️ FROZEN</text>
+  <text x="145" y="455" text-anchor="middle" class="dept-sm">Freezer Aisles</text>
+  <text x="145" y="480" text-anchor="middle" class="label">Frozen fruit · veg</text>
+  <text x="145" y="497" text-anchor="middle" class="label">Plant proteins</text>
+  <text x="145" y="514" text-anchor="middle" class="label">Ice cream endcaps</text>
+  <text x="145" y="540" text-anchor="middle" class="path">⑥ FREEZER LAST</text>
+
+  <!-- CENTER AISLES block -->
+  <rect x="255" y="185" width="430" height="380" fill="#fff7ed" stroke="#fb923c" stroke-width="2" rx="8"/>
+  <text x="470" y="210" text-anchor="middle" class="dept">CENTER AISLES — Dry Grocery</text>
+  <text x="470" y="228" text-anchor="middle" class="dept-sm">Walk aisles low → high · Check LEFT side, then RIGHT side · Front · Halfway · Back</text>
+
+  <!-- Aisle rows 1-16 -->
+  <!-- Row labels L/R -->
+  <text x="270" y="255" class="label">L</text>
+  <text x="665" y="255" class="label">R</text>
+
+  <!-- Aisles as bars with labels -->
+  <g id="aisles">
+    <!-- helper: each aisle is a horizontal shelf pair -->
+    <rect x="280" y="245" width="380" height="18" class="aisle-bar" rx="3"/>
+    <text x="470" y="258" text-anchor="middle" class="aisle">A1–2  Cereal · Breakfast · Oats / GF grains</text>
+
+    <rect x="280" y="268" width="380" height="18" class="aisle-bar" rx="3"/>
+    <text x="470" y="281" text-anchor="middle" class="aisle">A3–4  Baking · Sugar · Flour · Baking nuts</text>
+
+    <rect x="280" y="291" width="380" height="18" class="aisle-bar" rx="3"/>
+    <text x="470" y="304" text-anchor="middle" class="aisle">A5–6  Rice · Grains · Pasta (GF often here)</text>
+
+    <rect x="280" y="314" width="380" height="18" class="aisle-bar" rx="3"/>
+    <text x="470" y="327" text-anchor="middle" class="aisle">A6–7  Spices · Seasonings · Extracts</text>
+
+    <rect x="280" y="337" width="380" height="18" class="aisle-bar" rx="3"/>
+    <text x="470" y="350" text-anchor="middle" class="aisle">A8–9  Beans · Canned goods · Broth / stock</text>
+
+    <rect x="280" y="360" width="380" height="18" class="aisle-bar" rx="3"/>
+    <text x="470" y="373" text-anchor="middle" class="aisle">A10–11  Condiments · Oils · Vinegars · Sauces</text>
+
+    <rect x="280" y="383" width="380" height="18" class="aisle-bar" rx="3"/>
+    <text x="470" y="396" text-anchor="middle" class="aisle">A12–14  Beverages · Water · Shelf-stable juice</text>
+
+    <rect x="280" y="406" width="380" height="18" class="aisle-bar" rx="3"/>
+    <text x="470" y="419" text-anchor="middle" class="aisle">A15–16  Nuts · Seeds · Trail mix · Snacks</text>
+
+    <rect x="280" y="429" width="380" height="18" class="aisle-bar" rx="3"/>
+    <text x="470" y="442" text-anchor="middle" class="aisle">A17–18  International · Organic / natural bay</text>
+
+    <rect x="280" y="452" width="380" height="18" class="aisle-bar" rx="3"/>
+    <text x="470" y="465" text-anchor="middle" class="aisle">A19–20  Baby · Pet  (often near grocery edge)</text>
+  </g>
+
+  <!-- Depth markers on aisle block -->
+  <text x="290" y="500" class="path">FRONT →</text>
+  <text x="430" y="500" class="path">HALFWAY</text>
+  <text x="580" y="500" class="path">← BACK</text>
+  <line x1="290" y1="510" x2="650" y2="510" stroke="#ea580c" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="470" y="535" text-anchor="middle" class="dept-sm">Each aisle: shop LEFT side first, then RIGHT · Endcaps at both ends for sales</text>
+  <text x="470" y="552" text-anchor="middle" class="label">Shelf tip: eye-level = premium · lower shelves = value brands</text>
+
+  <!-- Side panel legend -->
+  <rect x="960" y="90" width="220" height="560" fill="#fffbeb" stroke="#ea580c" stroke-width="2" rx="12" filter="url(#shadow)"/>
+  <text x="1070" y="120" text-anchor="middle" class="dept">LEGEND &amp; PATH</text>
+
+  <rect x="980" y="140" width="18" height="18" fill="#86efac" stroke="#16a34a" rx="3"/>
+  <text x="1008" y="153" class="legend">Produce / Fresh</text>
+  <rect x="980" y="168" width="18" height="18" fill="#fcd34d" stroke="#d97706" rx="3"/>
+  <text x="1008" y="181" class="legend">Bakery / Deli</text>
+  <rect x="980" y="196" width="18" height="18" fill="#fca5a5" stroke="#dc2626" rx="3"/>
+  <text x="1008" y="209" class="legend">Meat wall</text>
+  <rect x="980" y="224" width="18" height="18" fill="#93c5fd" stroke="#2563eb" rx="3"/>
+  <text x="1008" y="237" class="legend">Dairy coolers</text>
+  <rect x="980" y="252" width="18" height="18" fill="#67e8f9" stroke="#0891b2" rx="3"/>
+  <text x="1008" y="265" class="legend">Frozen aisles</text>
+  <rect x="980" y="280" width="18" height="18" fill="#c2410c" rx="3"/>
+  <text x="1008" y="293" class="legend">Numbered dry aisles</text>
+
+  <text x="1070" y="330" text-anchor="middle" class="dept">SHOPPING PATH</text>
+  <text x="980" y="355" class="path">① Produce (fruit/veg/herbs)</text>
+  <text x="980" y="375" class="path">② Center aisles A1→A16</text>
+  <text x="980" y="395" class="path">③ Spices · beans · nuts</text>
+  <text x="980" y="415" class="path">④ Beverages / bases</text>
+  <text x="980" y="435" class="path">⑤ Dairy / chilled juice</text>
+  <text x="980" y="455" class="path">⑥ Frozen last</text>
+  <text x="980" y="475" class="path">⑦ Checkout</text>
+
+  <text x="1070" y="510" text-anchor="middle" class="dept">SIDE &amp; DEPTH</text>
+  <text x="980" y="535" class="legend">LEFT = left side of aisle</text>
+  <text x="980" y="555" class="legend">RIGHT = right side of aisle</text>
+  <text x="980" y="575" class="legend">FRONT = entrance end</text>
+  <text x="980" y="595" class="legend">HALFWAY = mid-run</text>
+  <text x="980" y="615" class="legend">BACK = far / wall end</text>
+
+  <!-- Footer notes -->
+  <text x="40" y="730" class="note">LiquidFloodie grocery list maps categories to these zones (e.g. fruit→Produce, spices→A6–7, nuts→A15–16, bases→A12–14 or dairy coolers).</text>
+  <text x="40" y="750" class="note">Use the Walmart app aisle locator for your exact store — aisle numbers shift after remodels. This map is a typical Supercenter grocery pattern.</text>
+  <text x="40" y="770" class="note">© Educational diagram for LiquidFloodie · Not affiliated with Walmart Inc.</text>
+</svg>

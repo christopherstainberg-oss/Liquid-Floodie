@@ -70,6 +70,8 @@ const DEFAULTS = {
     groceryStore: "walmart",
     /** aisle | category | name | cost */
     grocerySort: "aisle",
+    /** illustrated | diagram — store layout map view */
+    groceryMapView: "illustrated",
   },
   /** Nutrients tracking (calories, macros, micros, water, fiber) */
   nutrients: {

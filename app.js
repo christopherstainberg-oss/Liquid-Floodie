@@ -1790,6 +1790,7 @@ function bindGrocery() {
       renderGrocery();
     };
   }
+  bindGroceryMapControls();
 
   $("#rebuildGroceryBtn").onclick = () => {
     if (!state.mealPlan) return toast("Generate a meal plan first");
@@ -1857,6 +1858,70 @@ function renderThirdParty(targetId) {
     .join("");
 }
 
+const GROCERY_MAPS = {
+  illustrated: {
+    src: "walmart-grocery-layout-illustrated.jpg",
+    alt: "Illustrated Walmart Supercenter grocery floor plan with one-way shopping path from produce through center aisles to dairy and frozen",
+  },
+  diagram: {
+    src: "walmart-grocery-layout-map.png",
+    alt: "Labeled Walmart Supercenter grocery layout diagram with aisle numbers, left/right sides, and department zones",
+  },
+};
+
+function groceryMapView() {
+  return state.settings?.groceryMapView === "diagram" ? "diagram" : "illustrated";
+}
+
+function renderGroceryStoreMap() {
+  const panel = $("#groceryMapPanel");
+  if (!panel) return;
+  const storeId = groceryStoreId();
+  const view = groceryMapView();
+  const map = GROCERY_MAPS[view] || GROCERY_MAPS.illustrated;
+
+  panel.classList.remove("hide");
+  if ($("#groceryMapTitle")) {
+    $("#groceryMapTitle").textContent =
+      storeId === "winco"
+        ? "Supercenter layout map (path guide for WinCo too)"
+        : "Walmart Supercenter grocery layout map";
+  }
+  if ($("#groceryMapCaption")) {
+    $("#groceryMapCaption").textContent =
+      storeId === "winco"
+        ? "WinCo often puts bulk bins near the front/center — still use perimeter first (produce), then dry aisles, cold last. This Supercenter map shows the same side/depth logic used on each list item."
+        : "Match each list item’s aisle · left/right · front/halfway/back to this map. Start at Produce (①), walk center aisles low→high, dairy & frozen last.";
+  }
+  if ($("#groceryMapImg")) {
+    $("#groceryMapImg").src = map.src;
+    $("#groceryMapImg").alt = map.alt;
+  }
+  if ($("#groceryMapLink")) {
+    $("#groceryMapLink").href = map.src;
+  }
+  if ($("#groceryMapFigCap")) {
+    $("#groceryMapFigCap").textContent =
+      view === "diagram"
+        ? "Detailed aisle diagram — tap to open full size. Educational guide, not an official Walmart floor plan."
+        : "Illustrated shopping path — tap to open full size. Educational guide, not an official Walmart floor plan.";
+  }
+  $$(".map-view-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mapView === view);
+  });
+}
+
+function bindGroceryMapControls() {
+  $$(".map-view-btn").forEach((btn) => {
+    btn.onclick = () => {
+      if (!state.settings) state.settings = {};
+      state.settings.groceryMapView = btn.dataset.mapView === "diagram" ? "diagram" : "illustrated";
+      saveState(state);
+      renderGroceryStoreMap();
+    };
+  });
+}
+
 function renderGroceryNavTips() {
   const el = $("#groceryNavTips");
   if (!el) return;
@@ -1866,7 +1931,7 @@ function renderGroceryNavTips() {
       <ul class="grocery-tips-list">
         ${NAV_TECHNIQUES.map((t) => `<li><strong>${escapeHtml(t.title)}:</strong> ${escapeHtml(t.text)}</li>`).join("")}
       </ul>
-      <p class="meta">Aisle numbers are educational approximations — layouts vary by remodel and city. Use the store app or ask staff when in doubt.</p>
+      <p class="meta">Aisle numbers are educational approximations — layouts vary by remodel and city. Use the Walmart app aisle locator or ask staff when in doubt. Map images above match the aisle · side · depth tags on each grocery item.</p>
     </details>`;
 }
 
@@ -1917,6 +1982,7 @@ function groceryItemHtml(it, storeId) {
 
 function renderGrocery() {
   renderThirdParty("#thirdPartyGrocery");
+  renderGroceryStoreMap();
   renderGroceryNavTips();
   const out = $("#groceryOutput");
   if (!out) return;
@@ -1927,7 +1993,11 @@ function renderGrocery() {
   if ($("#groceryStoreSelect")) $("#groceryStoreSelect").value = storeId;
   if ($("#grocerySortSelect")) $("#grocerySortSelect").value = sortMode;
   if ($("#groceryStoreNote")) {
-    $("#groceryStoreNote").textContent = meta.note || "";
+    $("#groceryStoreNote").textContent =
+      (meta.note || "") +
+      (storeId === "walmart"
+        ? " Use the layout map below with each item’s aisle · side · depth tags."
+        : " Use the layout map below for side/depth logic; prefer bulk bins early at WinCo.");
   }
 
   const r = getRestrictions();

@@ -387,6 +387,25 @@ if (groceryCbs > 0) {
   if (navSample.hasCost && navSample.hasTotal) pass("Grocery shows item cost + approximate total");
   else fail("Grocery cost display missing", navSample);
 
+  const mapUi = await page.evaluate(() => {
+    const img = document.getElementById("groceryMapImg");
+    return {
+      panel: !!document.getElementById("groceryMapPanel"),
+      src: img?.getAttribute("src") || "",
+      naturalOk: true,
+      illustratedBtn: !!document.getElementById("mapViewIllustrated"),
+      diagramBtn: !!document.getElementById("mapViewDiagram"),
+    };
+  });
+  if (mapUi.panel && /walmart-grocery-layout/i.test(mapUi.src) && mapUi.illustratedBtn && mapUi.diagramBtn) {
+    pass("Grocery store layout map is shown with view toggles");
+  } else fail("Grocery layout map missing", mapUi);
+  await page.evaluate(() => document.getElementById("mapViewDiagram")?.click());
+  await sleep(200);
+  const diagramSrc = await page.evaluate(() => document.getElementById("groceryMapImg")?.getAttribute("src") || "");
+  if (/walmart-grocery-layout-map\.png/i.test(diagramSrc)) pass("Diagram map view switches to labeled PNG");
+  else fail("Diagram map toggle failed", diagramSrc);
+
   // Switch store path
   await page.select("#groceryStoreSelect", "winco");
   await sleep(400);

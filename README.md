@@ -11,7 +11,7 @@ Built from `Liquid Foodie.md` in the Dietary Application Drive folder.
 - Default dietary restrictions: **no milk**, **no gluten**  
 - **5-day meal plan**, **≤ 2 meals/day**  
 - **Endless meal variations** with **rotate**  
-- **Grocery list** with **Walmart / WinCo aisle navigation** (side + depth), comparable **item costs**, approximate **cart total**, and third-party grocery links  
+- **Grocery list** with **Walmart / WinCo aisle navigation** (side + depth), on-screen **Supercenter layout map**, comparable **item costs**, approximate **cart total**, and third-party grocery links  
 - **Quick Search** for ingredients (macros/micros + add to custom meal)  
 - **Login / register / password recovery** (security questions) + **Gravatar** profile pics  
 - **PWA** sections: **Home** (daily meals), **Weekly Meal Plan**, **Grocery List**, **Nutrients**, **Settings**  
