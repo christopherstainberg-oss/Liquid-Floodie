@@ -40,9 +40,23 @@ function jitter(base, h, i, pct = 0.12) {
   return Math.round(base * f * 10) / 10;
 }
 
-/** Build nutrition profile for an ingredient */
+/** Build nutrition profile for an ingredient (user custom nutrition takes priority) */
 export function nutritionForItem(item) {
-  if (item?.nutrition) return item.nutrition;
+  if (item?.nutrition && typeof item.nutrition === "object") {
+    // User-authored values (custom ingredients) — normalize to standard shape
+    const n = normalizeMealNutrition(item.nutrition);
+    return {
+      calories: Math.round(n.calories * 10) / 10,
+      protein: Math.round(n.protein * 10) / 10,
+      carbs: Math.round(n.carbs * 10) / 10,
+      fat: Math.round(n.fat * 10) / 10,
+      fiber: Math.round(n.fiber * 10) / 10,
+      waterMl: Math.round(n.waterMl || 0),
+      micros: Object.fromEntries(
+        Object.entries(n.micros || {}).map(([k, v]) => [k, Math.round(v * 10) / 10])
+      ),
+    };
+  }
   const cat = item?.category || "other";
   const base = { ...(CAT_DEFAULTS[cat] || CAT_DEFAULTS.other) };
   const key = String(item?.name || "")

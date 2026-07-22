@@ -67,7 +67,7 @@
   </nav>
 
   <main id="main" class="wrap" tabindex="-1">
-    <!-- HOME: Ingredients Library + Daily Meals -->
+    <!-- HOME: Daily Meals + nutrition summary (library lives under Nutrients) -->
     <section class="panel active" id="panel-home" aria-labelledby="home-title">
       <div class="hero card">
         <h2 id="home-title">Home</h2>
@@ -75,39 +75,18 @@
         <div class="btn-row">
           <button type="button" class="btn primary" id="goPlanBtn">Weekly Meal Plan</button>
           <button type="button" class="btn ghost" id="goNutrientsBtn">Nutrients</button>
-          <button type="button" class="btn ghost" id="goHowToBtn">How To Blend</button>
         </div>
       </div>
 
       <div class="stat-grid" id="homeStats" aria-live="polite"></div>
 
-      <div class="card">
-        <h3>Ingredients Library</h3>
-        <p class="hint">Search and select whole foods that meet your dietary restrictions.</p>
-        <div class="icon-legend" id="iconLegend" aria-label="Ingredient icon legend"></div>
-        <div class="form-grid">
-          <label>
-            Search
-            <input type="search" id="libSearch" placeholder="e.g. spinach, broth, berry…" />
-          </label>
-          <label>
-            Category
-            <select id="libCategory">
-              <option value="">All</option>
-              <option value="base">Bases (Liquid)</option>
-              <option value="fruit">Fruit</option>
-              <option value="vegetable">Vegetable</option>
-              <option value="herb">Herb</option>
-              <option value="spice">Spice</option>
-              <option value="nut-seed">Nuts &amp; Seeds</option>
-              <option value="legume">Legume</option>
-              <option value="grain">Grain (GF)</option>
-              <option value="protein">Protein</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
+      <div class="card" id="homeRestrictionsCard">
+        <h3>Your Dietary Restrictions</h3>
+        <p class="hint">Active rules applied to today’s meals, the weekly plan, and your grocery list. Manage full list in Settings.</p>
+        <p class="meta" id="homeRestrictionsStatus" aria-live="polite"></p>
+        <div class="btn-row">
+          <button type="button" class="btn ghost" id="homeOpenSettingsRestrictions">Manage Restrictions</button>
         </div>
-        <div id="libOutput" class="ing-grid" role="list"></div>
       </div>
 
       <div class="card" id="dailyMealsCard">
@@ -120,18 +99,6 @@
         <h3>Today’s Nutrition</h3>
         <p class="hint">Calories, macros, and micros from today’s liquid meals — with per-ingredient breakdown.</p>
         <div id="dailyNutritionOutput" aria-live="polite"></div>
-      </div>
-
-      <div class="card" id="howtoCard">
-        <h3>How To Create A Liquid Meal</h3>
-        <ol class="steps-list" id="globalHowTo">
-          <li><strong>Gather</strong> a liquid base (water, broth, or juice) and 2–5 whole-food add-ins.</li>
-          <li><strong>Wash &amp; Prep</strong> produce into blender-friendly pieces.</li>
-          <li><strong>Base First</strong> — pour liquid into the blender jar.</li>
-          <li><strong>Soft Then Dense</strong> — add soft fruit/veg, then denser items.</li>
-          <li><strong>Blend In Stages</strong> — low, then high until smooth.</li>
-          <li><strong>Taste, Serve, Store</strong> — drink fresh; refrigerate leftovers ≤24h.</li>
-        </ol>
       </div>
     </section>
 
@@ -158,16 +125,22 @@
               <option value="5">5</option>
             </select>
           </label>
-          <label class="check">
-            <input type="checkbox" id="restrictMilk" checked />
-            No Milk / Dairy
-          </label>
-          <label class="check">
-            <input type="checkbox" id="restrictGluten" checked />
-            No Gluten
-          </label>
         </div>
-        <p class="meta">These dietary restriction checkboxes sync with <strong>Settings</strong>.</p>
+
+        <h3 class="custom-subhead">Dietary Restrictions</h3>
+        <p class="hint">Check items to avoid. These drive daily meals, the weekly plan, and your grocery list. Syncs with Settings.</p>
+        <div class="restriction-grid compact" id="planRestrictionsForm" aria-label="Plan dietary restrictions"></div>
+        <div class="custom-restriction-row">
+          <label class="block-label">
+            Add custom restriction
+            <span class="inline-add">
+              <input type="text" id="planCustomRestriction" maxlength="40" placeholder="e.g. banana, nightshade…" autocomplete="off" />
+              <button type="button" class="btn" id="planAddCustomRestriction">Add</button>
+            </span>
+          </label>
+          <div id="planCustomRestrictionChips" class="chip-row" aria-live="polite"></div>
+        </div>
+        <p class="meta" id="planRestrictionsStatus" aria-live="polite"></p>
 
         <label class="block-label">
           Favorite Ingredients (Optional — Max 5)
@@ -315,7 +288,8 @@
     <section class="panel" id="panel-grocery" aria-labelledby="grocery-title" hidden>
       <div class="card">
         <h2 id="grocery-title">Grocery List</h2>
-        <p class="hint">Built from your weekly meal plan. Check items as you shop.</p>
+        <p class="hint">Built from your weekly meal plan using only ingredients that match your dietary restrictions. Check items as you shop.</p>
+        <p class="meta" id="groceryRestrictionsStatus" aria-live="polite"></p>
         <div class="btn-row">
           <button type="button" class="btn primary" id="rebuildGroceryBtn">Rebuild from plan</button>
           <button type="button" class="btn ghost" id="exportGroceryBtn">Export list</button>
@@ -384,6 +358,174 @@
         <h3>Plan overview</h3>
         <div id="planNutritionOverview" class="meta"></div>
       </div>
+
+      <!-- Add custom ingredients with full nutrition -->
+      <div class="card" id="customIngredientCard">
+        <h3>Add Custom Ingredient</h3>
+        <p class="hint">Create your own whole-food ingredients with calories, macronutrients, micronutrients, and water. They appear in the library, custom meals, meal plans, and grocery lists.</p>
+
+        <input type="hidden" id="ciEditId" value="" />
+
+        <label class="block-label">
+          Ingredient Name
+          <input type="text" id="ciName" maxlength="60" placeholder="e.g. Homemade Almond Milk (unsweetened)" autocomplete="off" />
+        </label>
+
+        <div class="form-grid">
+          <label>
+            Category
+            <select id="ciCategory">
+              <option value="fruit">Fruit</option>
+              <option value="vegetable">Vegetable</option>
+              <option value="base">Bases (Liquid)</option>
+              <option value="herb">Herb</option>
+              <option value="spice">Spice</option>
+              <option value="nut-seed">Nuts &amp; Seeds</option>
+              <option value="legume">Legume</option>
+              <option value="grain">Grain (GF)</option>
+              <option value="protein">Protein</option>
+              <option value="other" selected>Other</option>
+            </select>
+          </label>
+          <label>
+            Icon (emoji, optional)
+            <input type="text" id="ciIcon" maxlength="4" placeholder="e.g. 🥤" autocomplete="off" />
+          </label>
+        </div>
+
+        <label class="block-label">
+          Notes (optional)
+          <input type="text" id="ciNotes" maxlength="200" placeholder="e.g. per 100 g / 1 cup blended portion" autocomplete="off" />
+        </label>
+
+        <h4 class="custom-nut-heading">Calories &amp; Water</h4>
+        <div class="form-grid">
+          <label>
+            Calories (kcal)
+            <input type="number" id="ciCal" min="0" step="0.1" placeholder="e.g. 80" inputmode="decimal" />
+          </label>
+          <label>
+            Water (ml)
+            <input type="number" id="ciWater" min="0" step="1" placeholder="e.g. 40" inputmode="numeric" />
+          </label>
+        </div>
+
+        <h4 class="custom-nut-heading">Macronutrients</h4>
+        <div class="form-grid">
+          <label>
+            Protein (g)
+            <input type="number" id="ciProtein" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Carbs (g)
+            <input type="number" id="ciCarbs" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Fat (g)
+            <input type="number" id="ciFat" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Fiber (g)
+            <input type="number" id="ciFiber" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+        </div>
+
+        <h4 class="custom-nut-heading">Micronutrients</h4>
+        <div class="form-grid micro-form-grid">
+          <label>
+            Vitamin A (µg RAE)
+            <input type="number" id="ciMicro_vitaminA" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Vitamin C (mg)
+            <input type="number" id="ciMicro_vitaminC" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Vitamin K (µg)
+            <input type="number" id="ciMicro_vitaminK" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Potassium (mg)
+            <input type="number" id="ciMicro_potassium" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Calcium (mg)
+            <input type="number" id="ciMicro_calcium" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Iron (mg)
+            <input type="number" id="ciMicro_iron" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Magnesium (mg)
+            <input type="number" id="ciMicro_magnesium" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Folate (µg)
+            <input type="number" id="ciMicro_folate" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+        </div>
+
+        <h4 class="custom-nut-heading">Allergen &amp; Diet Flags</h4>
+        <p class="hint">Uncheck if this ingredient is free of the item (checked = free / allowed). Affects meal plans when those restrictions are active.</p>
+        <div class="restriction-grid compact ci-flags" id="ciFlagGrid">
+          <label class="check"><input type="checkbox" id="ciMilkFree" checked /> Milk-free</label>
+          <label class="check"><input type="checkbox" id="ciGlutenFree" checked /> Gluten-free</label>
+          <label class="check"><input type="checkbox" id="ciEggFree" checked /> Egg-free</label>
+          <label class="check"><input type="checkbox" id="ciNutFree" checked /> Tree-nut-free</label>
+          <label class="check"><input type="checkbox" id="ciPeanutFree" checked /> Peanut-free</label>
+          <label class="check"><input type="checkbox" id="ciShellfishFree" checked /> Shellfish-free</label>
+          <label class="check"><input type="checkbox" id="ciFishFree" checked /> Fish-free</label>
+          <label class="check"><input type="checkbox" id="ciSoyFree" checked /> Soy-free</label>
+          <label class="check"><input type="checkbox" id="ciSesameFree" checked /> Sesame-free</label>
+          <label class="check"><input type="checkbox" id="ciVegetarian" checked /> Vegetarian</label>
+          <label class="check"><input type="checkbox" id="ciVegan" checked /> Vegan</label>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="btn primary" id="saveCustomIngredientBtn">Save Custom Ingredient</button>
+          <button type="button" class="btn ghost" id="clearCustomIngredientBtn">Clear Form</button>
+        </div>
+        <p class="meta" id="ciFormStatus" aria-live="polite"></p>
+      </div>
+
+      <div class="card" id="myCustomIngredientsCard">
+        <h3>My Custom Ingredients</h3>
+        <p class="hint">Edit or delete ingredients you have added. Nutrition values are used in meals and daily totals.</p>
+        <div id="customIngredientsList" aria-live="polite"></div>
+      </div>
+
+      <!-- Ingredients Library with nutritional information -->
+      <div class="card" id="ingredientsLibraryCard">
+        <h3>Ingredients Library</h3>
+        <p class="hint">Search whole foods (including your custom ingredients) that meet your dietary restrictions. Expand any ingredient for calories, macros, and micronutrients.</p>
+        <div class="icon-legend" id="iconLegend" aria-label="Ingredient icon legend"></div>
+        <div class="form-grid">
+          <label>
+            Search
+            <input type="search" id="libSearch" placeholder="e.g. spinach, broth, berry…" />
+          </label>
+          <label>
+            Category
+            <select id="libCategory">
+              <option value="">All</option>
+              <option value="base">Bases (Liquid)</option>
+              <option value="fruit">Fruit</option>
+              <option value="vegetable">Vegetable</option>
+              <option value="herb">Herb</option>
+              <option value="spice">Spice</option>
+              <option value="nut-seed">Nuts &amp; Seeds</option>
+              <option value="legume">Legume</option>
+              <option value="grain">Grain (GF)</option>
+              <option value="protein">Protein</option>
+              <option value="other">Other</option>
+              <option value="__custom__">My Custom Only</option>
+            </select>
+          </label>
+        </div>
+        <p class="meta" id="libRestrictionsNote" aria-live="polite"></p>
+        <div id="libOutput" class="ing-list" role="list"></div>
+      </div>
     </section>
 
     <!-- SETTINGS: account, gamification, analytics, scheduling, import/export, delete/recover -->
@@ -392,22 +534,17 @@
         <h2 id="settings-title">Settings</h2>
 
         <h3>Dietary Restrictions</h3>
-        <p class="hint">Update what you avoid. Checked items are blocked from meal generation, the ingredients library, and custom meals. Changes save on this device.</p>
-        <div class="restriction-grid" id="dietaryRestrictionsForm">
-          <label class="check restriction-item">
-            <input type="checkbox" id="settingsRestrictMilk" />
-            <span>
-              <strong>No Milk / Dairy</strong>
-              <span class="meta">Blocks milk, cream, cheese, yogurt, and other dairy ingredients.</span>
+        <p class="hint">Check what you avoid. Checked items are blocked from daily meals, the weekly plan, the ingredients library, custom meals, and your grocery list. Add custom keywords to exclude specific foods. Changes save on this device.</p>
+        <div class="restriction-grid" id="dietaryRestrictionsForm" aria-label="Settings dietary restrictions"></div>
+        <div class="custom-restriction-row">
+          <label class="block-label">
+            Add custom restriction
+            <span class="inline-add">
+              <input type="text" id="settingsCustomRestriction" maxlength="40" placeholder="e.g. banana, nightshade, cilantro…" autocomplete="off" />
+              <button type="button" class="btn" id="settingsAddCustomRestriction">Add</button>
             </span>
           </label>
-          <label class="check restriction-item">
-            <input type="checkbox" id="settingsRestrictGluten" />
-            <span>
-              <strong>No Gluten</strong>
-              <span class="meta">Blocks wheat, barley, rye, and other gluten-containing ingredients.</span>
-            </span>
-          </label>
+          <div id="settingsCustomRestrictionChips" class="chip-row" aria-live="polite"></div>
         </div>
         <p class="meta" id="restrictionsStatus" aria-live="polite"></p>
         <div class="btn-row">
@@ -483,19 +620,14 @@
     </section>
   </main>
 
-  <!-- Welcome: continue without account, or login / register -->
+  <!-- Auth required: create an account or log in to use the app -->
   <div class="modal auth-gate hide" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
     <div class="modal-card auth-gate-card">
-      <button type="button" class="modal-close" id="authClose" aria-label="Close">×</button>
+      <button type="button" class="modal-close hide" id="authClose" aria-label="Close">×</button>
       <div class="auth-brand">
         <img src="icons/icon.svg" width="56" height="56" alt="" class="auth-logo" />
-        <h2 id="authTitle">Welcome</h2>
-        <p class="auth-tagline">Whole-Food Liquid Meals While Maintaining Dietary Restrictions</p>
-      </div>
-
-      <div class="guest-cta" id="guestCta">
-        <button type="button" class="btn ghost" id="continueGuestBtn">Continue Without Account</button>
-        <p class="meta" style="text-align:center;margin:10px 0 0">Explore the full app as a guest. Create an account anytime for a named profile.</p>
+        <h2 id="authTitle">Create Account</h2>
+        <p class="auth-tagline">Create an account or log in to use LiquidFloodie. Accounts stay on this device.</p>
       </div>
 
       <div class="auth-tabs" role="tablist">

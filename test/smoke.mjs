@@ -71,6 +71,77 @@ assert(rotated.rotateOffset !== plan.rotateOffset || rotated.seed !== plan.seed,
 const filtered = engine.filterIngredients(INGREDIENT_DB.ingredients, { milk: true, gluten: true }, "spin");
 assert(filtered.length > 0, "search finds spinach-related items");
 
+// Expanded dietary restrictions correlate into meals + grocery
+const veganPlan = engine.generateMealPlan(INGREDIENT_DB, {
+  days: 3,
+  mealsPerDay: 1,
+  ingredientCount: 3,
+  restrictions: { milk: true, gluten: true, animal: true },
+  seed: 99,
+});
+const veganBlocked = veganPlan.plan.flatMap((d) => d.meals).some((m) => {
+  const parts = [m.base, ...m.ingredients];
+  return parts.some((p) => /chicken|beef|egg|bone broth|salmon|shrimp|honey/i.test(p?.name || ""));
+});
+assert(!veganBlocked, "vegan plan excludes animal products");
+const veganGrocery = engine.buildGroceryList(veganPlan);
+assert(veganGrocery.restrictionLabels?.some((l) => /vegan|animal/i.test(l)), "grocery stores restriction labels");
+assert(
+  veganGrocery.items.every((it) => engine.passesRestrictions(it, veganPlan.restrictions)),
+  "grocery items all pass vegan restrictions"
+);
+
+const nutRestricted = engine.filterIngredients(INGREDIENT_DB.ingredients, { milk: true, gluten: true, nuts: true }, "almond");
+assert(
+  nutRestricted.every((i) => !/almond|walnut|cashew|pecan|hazelnut/i.test(i.name)),
+  "tree nut restriction filters almonds etc."
+);
+
+const customR = engine.normalizeRestrictions({ milk: true, gluten: true, custom: ["banana"] });
+assert(customR.custom.includes("banana"), "custom restriction normalized");
+assert(
+  !engine.passesRestrictions({ name: "Banana", category: "fruit", wholeFood: true }, customR),
+  "custom restriction blocks banana"
+);
+assert(
+  engine.passesRestrictions({ name: "Spinach", category: "vegetable", wholeFood: true }, customR),
+  "custom restriction allows spinach"
+);
+
+// Custom ingredients with user nutrition
+const customIng = engine.buildCustomIngredient({
+  name: "Homemade Hemp Cream",
+  category: "other",
+  nutrition: {
+    calories: 90,
+    protein: 4,
+    carbs: 2,
+    fat: 7,
+    fiber: 1,
+    waterMl: 30,
+    micros: { calcium: 40, iron: 1.2, magnesium: 60 },
+  },
+  milkFree: true,
+  glutenFree: true,
+  vegan: true,
+});
+assert(customIng.custom === true, "custom ingredient flagged");
+assert(customIng.nutrition.calories === 90, "custom ingredient stores calories");
+assert(customIng.nutrition.micros.magnesium === 60, "custom ingredient stores micros");
+assert(customIng.nutrition.protein === 4, "custom ingredient stores protein");
+
+const merged = engine.mergeIngredientDb(INGREDIENT_DB, [customIng]);
+assert(merged.ingredients.some((i) => i.id === customIng.id), "merge adds custom to ingredients");
+assert(merged.customCount === 1, "merge reports custom count");
+
+let failedCi = false;
+try {
+  engine.buildCustomIngredient({ name: "", category: "fruit" });
+} catch {
+  failedCi = true;
+}
+assert(failedCi, "custom ingredient requires a name");
+
 const links = engine.thirdPartyLinks("spinach banana");
 assert(links.length >= 3, "third-party integration links present");
 
@@ -78,6 +149,10 @@ const share = engine.planToShareText(plan);
 assert(/Step/i.test(share) || /step/i.test(share), "share text includes steps");
 
 const nutrition = await import(pathToFileURL(join(root, "src", "nutrition.js")).href);
+const customIngNut = nutrition.nutritionForItem(customIng);
+assert(customIngNut.calories === 90, "nutritionForItem uses custom calories");
+assert(customIngNut.micros.magnesium === 60, "nutritionForItem uses custom micros");
+
 const mealNut = nutrition.nutritionForMeal(plan.plan[0].meals[0]);
 assert(mealNut.calories > 0, `meal calories > 0 (got ${mealNut.calories})`);
 assert(mealNut.protein >= 0 && mealNut.carbs >= 0 && mealNut.fat >= 0, "macros present");

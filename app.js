@@ -1,6 +1,6 @@
 /**
  * LiquidFloodie UI v1.2
- * Sections: Home (daily meals + library), Weekly Plan, Grocery, Nutrients, Settings
+ * Sections: Home (daily meals), Weekly Plan, Grocery, Nutrients (+ library), Settings
  */
 import { INGREDIENT_DB } from "./data/ingredients.js";
 import {
@@ -15,6 +15,13 @@ import {
   buildMealSteps,
   buildCustomMeal,
   addCustomMealToPlan,
+  buildCustomIngredient,
+  mergeIngredientDb,
+  RESTRICTION_PRESETS,
+  defaultRestrictions,
+  normalizeRestrictions,
+  restrictionsSummary,
+  passesRestrictions,
 } from "./src/engine.js";
 import {
   loadState,
@@ -53,6 +60,7 @@ import {
   nutritionForDay,
   nutritionBreakdownForDay,
   nutritionBreakdownForMeal,
+  nutritionForItem,
   DEFAULT_GOALS,
   MICRO_LABELS,
   SERVING_UNITS,
@@ -66,44 +74,38 @@ const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 
 let state = loadState();
-let db = INGREDIENT_DB;
+state.restrictions = normalizeRestrictions(state.restrictions || defaultRestrictions());
+if (!Array.isArray(state.customIngredients)) state.customIngredients = [];
+let db = mergeIngredientDb(INGREDIENT_DB, state.customIngredients);
 let currentUser = getCurrentUser();
 let selectedNutrientDay = 1;
 
-/** Guest access — full app without login (session-scoped) */
-const GUEST_KEY = "liquidfloodie.guest.v1";
-
-function isGuestMode() {
-  try {
-    return sessionStorage.getItem(GUEST_KEY) === "1";
-  } catch {
-    return false;
-  }
+/** Rebuild runtime catalog including user custom ingredients */
+function rebuildIngredientDb() {
+  if (!Array.isArray(state.customIngredients)) state.customIngredients = [];
+  db = mergeIngredientDb(INGREDIENT_DB, state.customIngredients);
+  return db;
 }
 
-function setGuestMode(on) {
-  try {
-    if (on) sessionStorage.setItem(GUEST_KEY, "1");
-    else sessionStorage.removeItem(GUEST_KEY);
-  } catch {
-    /* ignore */
-  }
+function findIngredient(id) {
+  if (!id) return null;
+  return (
+    db.ingredients.find((i) => i.id === id) ||
+    (state.customIngredients || []).find((i) => i.id === id) ||
+    null
+  );
 }
 
-/** Logged-in user OR guest may use the app */
+/** Only a signed-in account may use the app (no guest mode) */
 function canUseApp() {
-  return !!getCurrentUser() || isGuestMode();
+  return !!getCurrentUser();
 }
 
-function enterGuestMode(message) {
-  setGuestMode(true);
-  unlockAppAfterAuth();
-  log("auth", "guest mode");
-  refreshUserChrome().then(() => {
-    showTab("home");
-    renderAll();
-    toast(message || "Welcome — exploring without an account");
-  });
+/** Clear legacy guest session flag if present */
+try {
+  sessionStorage.removeItem("liquidfloodie.guest.v1");
+} catch {
+  /* ignore */
 }
 
 function goals() {
@@ -129,6 +131,9 @@ async function boot() {
 
   try {
     state = await hydrateFromDb(state);
+    state.restrictions = normalizeRestrictions(state.restrictions || defaultRestrictions());
+    if (!Array.isArray(state.customIngredients)) state.customIngredients = [];
+    rebuildIngredientDb();
   } catch {
     /* ignore */
   }
@@ -147,6 +152,7 @@ async function boot() {
   bindGrocery();
   bindNutrients();
   bindLibrary();
+  bindCustomIngredients();
   bindGame();
   bindSettings();
   bindSearch();
@@ -155,28 +161,23 @@ async function boot() {
 
   currentUser = getCurrentUser();
   const params = new URLSearchParams(location.search);
-  // Deep link: ?guest=1 opens app without login
-  if (!currentUser && (params.get("guest") === "1" || params.get("go") === "guest")) {
-    setGuestMode(true);
-  }
 
   // Autogenerate weekly + daily meal plan if none exists
   ensureAutoMealPlan();
 
-  const go = params.get("go");
-  if (go && go !== "guest") {
-    const map = { rewards: "settings", game: "settings", library: "home", nutrients: "nutrients" };
-    showTab(map[go] || go);
-  } else {
-    showTab("home");
-  }
-
   await refreshUserChrome();
   renderAll();
 
-  // First visit / no session: show Login + Create Account (do not auto-skip as guest)
+  // Account required — no guest access
   if (canUseApp()) {
     unlockAppAfterAuth();
+    const go = params.get("go");
+    if (go) {
+      const map = { rewards: "settings", game: "settings", library: "nutrients", nutrients: "nutrients" };
+      showTab(map[go] || go);
+    } else {
+      showTab("home");
+    }
   } else {
     lockAppForAuth();
     openAuth("register", { required: true });
@@ -193,7 +194,7 @@ function ensureAutoMealPlan() {
       days: 5,
       mealsPerDay: state.mealsPerDay || 2,
       ingredientCount: state.ingredientCount || 3,
-      restrictions: state.restrictions || { milk: true, gluten: true },
+      restrictions: getRestrictions(),
       preferredIds: state.preferredIds || [],
       seed: Date.now(),
       rotateOffset: 0,
@@ -216,7 +217,7 @@ function autogenerateWeeklyPlan() {
     days: 5,
     mealsPerDay: state.mealsPerDay || 2,
     ingredientCount: state.ingredientCount || 3,
-    restrictions: state.restrictions || { milk: true, gluten: true },
+    restrictions: getRestrictions(),
     preferredIds: state.preferredIds || [],
     seed: Date.now(),
     rotateOffset: 0,
@@ -287,8 +288,9 @@ function toast(msg) {
 function showTab(name) {
   if (!name) return;
   if (!canUseApp()) {
-    // Safety net: grant guest access rather than trapping on login
-    setGuestMode(true);
+    lockAppForAuth();
+    openAuth("register", { required: true });
+    return;
   }
   document.querySelectorAll("#tabNav .tab").forEach((b) => {
     const on = b.dataset.tab === name;
@@ -351,7 +353,6 @@ function unlockAppAfterAuth() {
 
 async function onAuthSuccess(user, message) {
   currentUser = user;
-  setGuestMode(false);
   if (user?.displayName) state.gamification.displayName = user.displayName;
   saveState(state);
   unlockAppAfterAuth();
@@ -365,40 +366,31 @@ function bindAuth() {
   const modal = $("#authModal");
   if (!modal) return;
 
-  $("#continueGuestBtn")?.addEventListener("click", () => {
-    enterGuestMode("Continuing without an account");
-  });
-
   $("#accountBtn").onclick = () => {
     if (getCurrentUser()) {
       showTab("settings");
       return;
     }
-    openAuth("login", { required: !canUseApp() });
+    openAuth("login", { required: true });
   };
 
+  // Close only allowed when already signed in (gate cannot be dismissed)
   $("#authClose").onclick = () => {
-    // Closing without an account continues as guest
-    if (!getCurrentUser()) setGuestMode(true);
+    if (!getCurrentUser()) {
+      toast("Create an account or log in to use LiquidFloodie");
+      return;
+    }
     unlockAppAfterAuth();
-    showTab("home");
-    renderAll();
-    refreshUserChrome();
   };
   modal.addEventListener("click", (e) => {
-    // Backdrop click only dismisses when not a required gate
     if (e.target !== modal) return;
-    if (modal.classList.contains("auth-gate") && !getCurrentUser() && !isGuestMode()) return;
-    if (!getCurrentUser()) setGuestMode(true);
+    // Required gate: do not dismiss without an account
+    if (!getCurrentUser()) return;
     unlockAppAfterAuth();
-    showTab("home");
-    renderAll();
-    refreshUserChrome();
   });
 
   $$(".auth-tab").forEach((tab) => {
-    tab.onclick = () =>
-      openAuth(tab.dataset.auth, { required: !canUseApp() });
+    tab.onclick = () => openAuth(tab.dataset.auth, { required: !canUseApp() });
   });
 
   const qs = listSecurityQuestions();
@@ -463,20 +455,18 @@ function bindAuth() {
 function openAuth(which, opts = {}) {
   const modal = $("#authModal");
   if (!modal) return;
-  const required = !!opts.required && !getCurrentUser() && !isGuestMode();
+  const required = !!opts.required || !getCurrentUser();
 
   modal.classList.remove("hide");
   if (required) {
-    // Full-screen gate: Login / Create Account / Continue Without Account
+    // Full-screen gate: must create account or log in
     modal.classList.add("auth-gate");
     document.body.classList.add("auth-locked");
     $("#authClose")?.classList.add("hide");
-    $("#guestCta")?.classList.remove("hide");
   } else {
     modal.classList.remove("auth-gate");
     document.body.classList.remove("auth-locked");
     $("#authClose")?.classList.remove("hide");
-    $("#guestCta")?.classList.toggle("hide", !!getCurrentUser());
   }
 
   $$(".auth-tab").forEach((t) => t.classList.toggle("active", t.dataset.auth === which));
@@ -486,6 +476,11 @@ function openAuth(which, opts = {}) {
   if ($("#authTitle")) {
     $("#authTitle").textContent =
       which === "login" ? "Login" : which === "register" ? "Create Account" : "Password Recovery";
+  }
+  if ($(".auth-tagline")) {
+    $(".auth-tagline").textContent = required
+      ? "Create an account or log in to use LiquidFloodie. Accounts stay on this device."
+      : "Whole-Food Liquid Meals While Maintaining Dietary Restrictions";
   }
   setTimeout(() => {
     const id = which === "login" ? "loginEmail" : which === "register" ? "regEmail" : "recEmail";
@@ -498,76 +493,147 @@ async function refreshUserChrome() {
   const avatar = await resolveAvatar(currentUser, 64);
   if ($("#headerAvatar")) {
     $("#headerAvatar").src = avatar;
-    $("#headerAvatar").alt = currentUser ? currentUser.displayName : "Guest";
+    $("#headerAvatar").alt = currentUser ? currentUser.displayName : "Sign In";
   }
   if ($("#headerUserLabel")) {
-    $("#headerUserLabel").textContent = currentUser
-      ? currentUser.displayName
-      : isGuestMode()
-        ? "Guest"
-        : "Sign In";
+    $("#headerUserLabel").textContent = currentUser ? currentUser.displayName : "Sign In";
   }
 }
 
-/* ---------- Home: daily meals + library ---------- */
+/* ---------- Home: daily meals (no ingredients library grid) ---------- */
 function bindHome() {
   $("#goPlanBtn").onclick = () => showTab("plan");
   $("#goNutrientsBtn").onclick = () => showTab("nutrients");
-  $("#goHowToBtn").onclick = () => $("#howtoCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  $("#homeOpenSettingsRestrictions")?.addEventListener("click", () => showTab("settings"));
+}
+
+function getRestrictions() {
+  return normalizeRestrictions(state.restrictions || defaultRestrictions());
 }
 
 function restrictionsSummaryText() {
-  const r = state.restrictions || { milk: true, gluten: true };
-  const parts = [];
-  if (r.milk) parts.push("No Milk / Dairy");
-  if (r.gluten) parts.push("No Gluten");
-  if (!parts.length) return "No dietary restrictions active — all whole foods in the library are available.";
-  return `Currently avoiding: ${parts.join(" · ")}. Meals, search, and custom blends use these rules.`;
+  const parts = restrictionsSummary(getRestrictions());
+  if (!parts.length) {
+    return "No dietary restrictions active — all whole foods are available for meals and the grocery list.";
+  }
+  return `Currently avoiding: ${parts.join(" · ")}. Applied to daily meals, weekly plan, ingredients library, and grocery list.`;
 }
 
-/** Sync dietary restriction checkboxes (Weekly Plan + Settings) */
+function restrictionsEqual(a, b) {
+  const x = normalizeRestrictions(a);
+  const y = normalizeRestrictions(b);
+  for (const p of RESTRICTION_PRESETS) {
+    if (!!x[p.id] !== !!y[p.id]) return false;
+  }
+  const xc = [...(x.custom || [])].sort().join("|");
+  const yc = [...(y.custom || [])].sort().join("|");
+  return xc === yc;
+}
+
+/** Build checkbox grid for plan or settings forms */
+function renderRestrictionCheckboxes(containerId, prefix) {
+  const el = $(containerId);
+  if (!el) return;
+  const r = getRestrictions();
+  el.innerHTML = RESTRICTION_PRESETS.map(
+    (p) => `
+    <label class="check restriction-item">
+      <input type="checkbox" data-restriction-id="${p.id}" id="${prefix}Restrict_${p.id}" ${r[p.id] ? "checked" : ""} />
+      <span>
+        <strong>${escapeHtml(p.label)}</strong>
+        <span class="meta">${escapeHtml(p.description)}</span>
+      </span>
+    </label>`
+  ).join("");
+  el.querySelectorAll("input[data-restriction-id]").forEach((input) => {
+    input.addEventListener("change", () => {
+      saveDietaryRestrictions(prefix === "plan" ? "plan" : "settings");
+    });
+  });
+}
+
+function renderCustomRestrictionChips(containerId) {
+  const el = $(containerId);
+  if (!el) return;
+  const custom = getRestrictions().custom || [];
+  if (!custom.length) {
+    el.innerHTML = `<span class="meta">No custom restrictions yet.</span>`;
+    return;
+  }
+  el.innerHTML = custom
+    .map(
+      (c) => `
+    <button type="button" class="chip rem" data-custom-restrict="${escapeHtml(c)}" title="Remove restriction">
+      No ${escapeHtml(c)} ×
+    </button>`
+    )
+    .join("");
+  el.querySelectorAll("[data-custom-restrict]").forEach((btn) => {
+    btn.onclick = () => {
+      const term = btn.dataset.customRestrict;
+      const r = getRestrictions();
+      r.custom = (r.custom || []).filter((c) => c !== term);
+      state.restrictions = r;
+      applyRestrictionChange(true);
+      toast(`Removed “${term}” restriction`);
+    };
+  });
+}
+
+function addCustomRestriction(inputId) {
+  const input = $(inputId);
+  if (!input) return;
+  const term = String(input.value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  if (!term) return toast("Enter a food or keyword to avoid");
+  if (term.length < 2) return toast("Use at least 2 characters");
+  const r = getRestrictions();
+  if ((r.custom || []).includes(term)) return toast("Already in your list");
+  r.custom = [...(r.custom || []), term].slice(0, 20);
+  state.restrictions = r;
+  input.value = "";
+  applyRestrictionChange(true);
+  toast(`Added restriction: No “${term}”`);
+}
+
+/** Sync dietary restriction checkboxes (Weekly Plan + Settings + Home) */
 function syncRestrictionControls() {
-  const r = state.restrictions || { milk: true, gluten: true };
-  if ($("#restrictMilk")) $("#restrictMilk").checked = !!r.milk;
-  if ($("#restrictGluten")) $("#restrictGluten").checked = !!r.gluten;
-  if ($("#settingsRestrictMilk")) $("#settingsRestrictMilk").checked = !!r.milk;
-  if ($("#settingsRestrictGluten")) $("#settingsRestrictGluten").checked = !!r.gluten;
-  if ($("#restrictionsStatus")) {
-    $("#restrictionsStatus").textContent = restrictionsSummaryText();
+  state.restrictions = getRestrictions();
+  renderRestrictionCheckboxes("#planRestrictionsForm", "plan");
+  renderRestrictionCheckboxes("#dietaryRestrictionsForm", "settings");
+  renderCustomRestrictionChips("#planCustomRestrictionChips");
+  renderCustomRestrictionChips("#settingsCustomRestrictionChips");
+  const text = restrictionsSummaryText();
+  if ($("#restrictionsStatus")) $("#restrictionsStatus").textContent = text;
+  if ($("#planRestrictionsStatus")) $("#planRestrictionsStatus").textContent = text;
+  if ($("#homeRestrictionsStatus")) $("#homeRestrictionsStatus").textContent = text;
+  if ($("#libRestrictionsNote")) {
+    const parts = restrictionsSummary(getRestrictions());
+    $("#libRestrictionsNote").textContent = parts.length
+      ? `Library filtered by: ${parts.join(" · ")}`
+      : "Showing all whole-food ingredients (no restrictions active).";
+  }
+  if ($("#groceryRestrictionsStatus")) {
+    const parts = restrictionsSummary(getRestrictions());
+    $("#groceryRestrictionsStatus").textContent = parts.length
+      ? `Grocery list respects: ${parts.join(" · ")}`
+      : "Grocery list includes all plan ingredients (no restrictions active).";
   }
 }
 
 /**
- * Save dietary restrictions from Weekly Plan or Settings checkboxes.
- * @param {"plan"|"settings"} [from]
+ * Persist restriction change, regenerate weekly/daily plan + grocery when rules change.
+ * @param {boolean} [forceRegen]
  */
-function saveDietaryRestrictions(from) {
-  let milk;
-  let gluten;
-  if (from === "plan" && $("#restrictMilk") && $("#restrictGluten")) {
-    milk = !!$("#restrictMilk").checked;
-    gluten = !!$("#restrictGluten").checked;
-  } else if ($("#settingsRestrictMilk") && $("#settingsRestrictGluten")) {
-    milk = !!$("#settingsRestrictMilk").checked;
-    gluten = !!$("#settingsRestrictGluten").checked;
-  } else if ($("#restrictMilk") && $("#restrictGluten")) {
-    milk = !!$("#restrictMilk").checked;
-    gluten = !!$("#restrictGluten").checked;
-  } else {
-    milk = !!(state.restrictions || {}).milk;
-    gluten = !!(state.restrictions || {}).gluten;
-  }
-  const prev = state.restrictions || {};
-  const changed = prev.milk !== milk || prev.gluten !== gluten;
-  state.restrictions = { milk, gluten };
-  // Keep both UIs in sync
-  if ($("#restrictMilk")) $("#restrictMilk").checked = milk;
-  if ($("#restrictGluten")) $("#restrictGluten").checked = gluten;
-  if ($("#settingsRestrictMilk")) $("#settingsRestrictMilk").checked = milk;
-  if ($("#settingsRestrictGluten")) $("#settingsRestrictGluten").checked = gluten;
+function applyRestrictionChange(forceRegen = false) {
+  const next = getRestrictions();
+  const prev = state.restrictions;
+  const changed = forceRegen || !restrictionsEqual(prev, next);
+  state.restrictions = next;
   saveState(state);
   log("restrictions", "updated", JSON.stringify(state.restrictions));
-  // Backend: regenerate meal plan when dietary rules change
   if (changed) {
     try {
       autogenerateWeeklyPlan();
@@ -582,10 +648,38 @@ function saveDietaryRestrictions(from) {
     renderHome();
     renderPlan();
     renderGrocery();
+    renderNutrients();
     syncRestrictionControls();
   } catch {
     /* ignore partial render */
   }
+  return state.restrictions;
+}
+
+/**
+ * Save dietary restrictions from Weekly Plan or Settings checkboxes.
+ * @param {"plan"|"settings"} [from]
+ */
+function saveDietaryRestrictions(from) {
+  const formSel = from === "plan" ? "#planRestrictionsForm" : "#dietaryRestrictionsForm";
+  const form = $(formSel) || $("#dietaryRestrictionsForm") || $("#planRestrictionsForm");
+  const r = getRestrictions();
+  if (form) {
+    form.querySelectorAll("input[data-restriction-id]").forEach((input) => {
+      r[input.dataset.restrictionId] = !!input.checked;
+    });
+  }
+  // Vegan implies related animal restrictions
+  if (r.animal) {
+    r.meat = true;
+    r.milk = true;
+    r.egg = true;
+    r.fish = true;
+    r.shellfish = true;
+  }
+  const prev = { ...getRestrictions() };
+  state.restrictions = normalizeRestrictions(r);
+  applyRestrictionChange(!restrictionsEqual(prev, state.restrictions));
   return state.restrictions;
 }
 
@@ -604,7 +698,10 @@ function currentPlanDay() {
 
 function renderHome() {
   ensureAutoMealPlan();
-  const a = state.analytics;
+  state.restrictions = getRestrictions();
+  if ($("#homeRestrictionsStatus")) {
+    $("#homeRestrictionsStatus").textContent = restrictionsSummaryText();
+  }
   const day = currentPlanDay();
   const dayNut = day ? nutritionForDay(day) : null;
   $("#homeStats").innerHTML = `
@@ -627,14 +724,20 @@ function renderHome() {
     return renderHome();
   }
   const dayNum = day.day;
+  const avoid = restrictionsSummary(getRestrictions());
   out.innerHTML = `
     <p class="meta"><strong>${escapeHtml(day.label)}</strong> · ${day.meals.length} Meal(s) · Fiber ${dayNut.fiber}g · Water ~${dayNut.waterMl} ml</p>
+    <p class="meta">${
+      avoid.length
+        ? `Meals matched to: ${escapeHtml(avoid.join(" · "))}`
+        : "No active dietary restrictions for today’s meals."
+    }</p>
     ${day.meals
       .map((m, i) => renderMealCard(m, { dayNum, mealIndex: i, showRotate: true }))
       .join("")}
     <div class="btn-row">
       <button type="button" class="btn ghost" id="homeOpenPlan">Open Full Weekly Plan</button>
-      <button type="button" class="btn ghost" id="homeOpenNutrients">Nutrients Section</button>
+      <button type="button" class="btn ghost" id="homeOpenNutrients">Nutrients &amp; Library</button>
     </div>
   `;
   $("#homeOpenPlan").onclick = () => showTab("plan");
@@ -866,14 +969,12 @@ function bindPlan() {
   if ($("#ingredientCount")) $("#ingredientCount").value = String(state.ingredientCount || 3);
   syncRestrictionControls();
 
-  // Weekly Plan dietary restriction checkboxes (sync with Settings)
-  $("#restrictMilk")?.addEventListener("change", () => {
-    saveDietaryRestrictions("plan");
-    toast("Dietary restrictions updated");
-  });
-  $("#restrictGluten")?.addEventListener("change", () => {
-    saveDietaryRestrictions("plan");
-    toast("Dietary restrictions updated");
+  $("#planAddCustomRestriction")?.addEventListener("click", () => addCustomRestriction("#planCustomRestriction"));
+  $("#planCustomRestriction")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addCustomRestriction("#planCustomRestriction");
+    }
   });
 
   bindCustomMealBuilder();
@@ -1032,10 +1133,8 @@ function writeCustomServingToForm(serving) {
 }
 
 function draftMealForEstimate() {
-  const base = db.ingredients.find((i) => i.id === ($("#customMealBase")?.value || customDraft.baseId));
-  const ingredients = customDraft.ingredientIds
-    .map((id) => db.ingredients.find((i) => i.id === id))
-    .filter(Boolean);
+  const base = findIngredient($("#customMealBase")?.value || customDraft.baseId);
+  const ingredients = customDraft.ingredientIds.map((id) => findIngredient(id)).filter(Boolean);
   if (!base || base.category !== "base") throw new Error("Pick a liquid base first.");
   if (ingredients.length < 2) throw new Error("Add at least 2 ingredients to estimate.");
   return { base, ingredients, title: "estimate" };
@@ -1072,12 +1171,7 @@ function populateCustomBaseSelect() {
 }
 
 function passesRestrictionsSafe(item) {
-  const r = state.restrictions || { milk: true, gluten: true };
-  // Inline check mirrors engine (avoid import cycle issues in bundle)
-  if (!item?.wholeFood) return false;
-  if (r.milk && item.milkFree === false) return false;
-  if (r.gluten && item.glutenFree === false) return false;
-  return true;
+  return passesRestrictions(item, getRestrictions());
 }
 
 function renderCustomIngSearch(q) {
@@ -1087,7 +1181,7 @@ function renderCustomIngSearch(q) {
     box.innerHTML = `<span class="meta">Type at least 2 characters to search.</span>`;
     return;
   }
-  const hits = filterIngredients(db.ingredients, state.restrictions || { milk: true, gluten: true }, q)
+  const hits = filterIngredients(db.ingredients, getRestrictions(), q)
     .filter((i) => i.category !== "base")
     .filter((i) => !customDraft.ingredientIds.includes(i.id))
     .slice(0, 16);
@@ -1098,7 +1192,7 @@ function renderCustomIngSearch(q) {
   box.innerHTML = hits
     .map(
       (i) =>
-        `<button type="button" class="chip" data-add-ing="${i.id}">${iconFor(i)} ${escapeHtml(i.name)} <span class="meta">+</span></button>`
+        `<button type="button" class="chip" data-add-ing="${i.id}">${iconFor(i)} ${escapeHtml(i.name)}${i.custom ? " · custom" : ""} <span class="meta">+</span></button>`
     )
     .join("");
   box.onclick = (e) => {
@@ -1121,9 +1215,7 @@ function renderCustomIngSelected() {
   const count = $("#customIngCount");
   if (count) count.textContent = `(${customDraft.ingredientIds.length} / 5)`;
   if (!box) return;
-  const items = customDraft.ingredientIds
-    .map((id) => db.ingredients.find((i) => i.id === id))
-    .filter(Boolean);
+  const items = customDraft.ingredientIds.map((id) => findIngredient(id)).filter(Boolean);
   box.innerHTML = items.length
     ? items
         .map(
@@ -1143,17 +1235,15 @@ function renderCustomIngSelected() {
 
 function saveCustomMealFromDraft() {
   syncPlanFormToState();
-  const base = db.ingredients.find((i) => i.id === ($("#customMealBase")?.value || customDraft.baseId));
-  const ingredients = customDraft.ingredientIds
-    .map((id) => db.ingredients.find((i) => i.id === id))
-    .filter(Boolean);
+  const base = findIngredient($("#customMealBase")?.value || customDraft.baseId);
+  const ingredients = customDraft.ingredientIds.map((id) => findIngredient(id)).filter(Boolean);
   const serving = readCustomServingFromForm();
   const nut = readCustomNutritionFromForm();
   const meal = buildCustomMeal({
     name: $("#customMealName")?.value,
     base,
     ingredients,
-    restrictions: state.restrictions || { milk: true, gluten: true },
+    restrictions: getRestrictions(),
     serving,
     nutrition: nut?.nutrition || null,
     nutritionSource: nut?.nutritionSource || null,
@@ -1250,13 +1340,15 @@ function renderCustomMealsList() {
 function syncPlanFormToState() {
   state.mealsPerDay = Number($("#mealsPerDay")?.value) || 2;
   state.ingredientCount = Number($("#ingredientCount")?.value) || 3;
-  if ($("#restrictMilk") && $("#restrictGluten")) {
-    state.restrictions = {
-      milk: !!$("#restrictMilk").checked,
-      gluten: !!$("#restrictGluten").checked,
-    };
-    if ($("#settingsRestrictMilk")) $("#settingsRestrictMilk").checked = state.restrictions.milk;
-    if ($("#settingsRestrictGluten")) $("#settingsRestrictGluten").checked = state.restrictions.gluten;
+  const form = $("#planRestrictionsForm");
+  if (form) {
+    const r = getRestrictions();
+    form.querySelectorAll("input[data-restriction-id]").forEach((input) => {
+      r[input.dataset.restrictionId] = !!input.checked;
+    });
+    state.restrictions = normalizeRestrictions(r);
+  } else {
+    state.restrictions = getRestrictions();
   }
   saveState(state);
 }
@@ -1320,13 +1412,14 @@ function renderPlan() {
   }
   const plan = state.mealPlan;
   const planNut = nutritionForPlan(plan);
+  const avoid = restrictionsSummary(plan.restrictions || getRestrictions());
+  const avoidLine = avoid.length ? avoid.join(" · ") : "no active restrictions";
   out.innerHTML =
     `<div class="card"><p class="meta">Variation pool: ${plan.variationPoolSize} · endless ~${formatBig(
       plan.endlessCapacity || 0
-    )} · avg/day ~${planNut.averagePerDay.calories} kcal · ${
-      plan.restrictions.milk ? "no milk" : "milk ok"
-    }, ${plan.restrictions.gluten ? "no gluten" : "gluten ok"}</p>
-    <p class="hint">Use <strong>Rotate This Meal</strong> on any meal, or <strong>Rotate Meals</strong> for the whole week.</p></div>` +
+    )} · avg/day ~${planNut.averagePerDay.calories} kcal</p>
+    <p class="meta"><strong>Dietary restrictions for this plan:</strong> ${escapeHtml(avoidLine)}</p>
+    <p class="hint">Use <strong>Rotate This Meal</strong> on any meal, or <strong>Rotate Meals</strong> for the whole week. Changing restrictions regenerates daily and weekly meals.</p></div>` +
     plan.plan
       .map(
         (day) => `
@@ -1363,7 +1456,11 @@ function bindGrocery() {
 }
 
 function groceryText(list) {
-  return ["LiquidFloodie Grocery List", ""]
+  const labels = list?.restrictionLabels || restrictionsSummary(list?.restrictions || getRestrictions());
+  const header = ["LiquidFloodie Grocery List"];
+  if (labels.length) header.push(`Dietary restrictions: ${labels.join(" · ")}`);
+  header.push("");
+  return header
     .concat((list.items || []).map((it) => `[${it.checked ? "x" : " "}] ${it.name} ×${it.qty}`))
     .join("\n");
 }
@@ -1387,8 +1484,15 @@ function renderThirdParty(targetId) {
 function renderGrocery() {
   renderThirdParty("#thirdPartyGrocery");
   const out = $("#groceryOutput");
+  const r = getRestrictions();
+  const parts = restrictionsSummary(state.groceryList?.restrictions || r);
+  if ($("#groceryRestrictionsStatus")) {
+    $("#groceryRestrictionsStatus").textContent = parts.length
+      ? `Grocery list respects: ${parts.join(" · ")}`
+      : "Grocery list includes all plan ingredients (no restrictions active).";
+  }
   if (!state.groceryList?.items?.length) {
-    out.innerHTML = `<div class="card"><p class="hint">No grocery list yet. Generate a weekly meal plan first.</p></div>`;
+    out.innerHTML = `<div class="card"><p class="hint">No grocery list yet. Generate a weekly meal plan first. Lists only include ingredients allowed by your dietary restrictions.</p></div>`;
     return;
   }
   const byCat = new Map();
@@ -1425,7 +1529,233 @@ function renderGrocery() {
   };
 }
 
-/* ---------- Library (on Home) ---------- */
+/* ---------- Custom ingredients (with macros / micros) ---------- */
+function bindCustomIngredients() {
+  $("#saveCustomIngredientBtn")?.addEventListener("click", () => {
+    try {
+      saveCustomIngredientFromForm();
+    } catch (e) {
+      toast(e.message || "Could not save ingredient");
+    }
+  });
+  $("#clearCustomIngredientBtn")?.addEventListener("click", () => {
+    clearCustomIngredientForm();
+    toast("Form cleared");
+  });
+  renderCustomIngredientsList();
+}
+
+function readCiOptionalNumber(id) {
+  const el = $(id);
+  if (!el) return 0;
+  const raw = String(el.value ?? "").trim();
+  if (raw === "") return 0;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) throw new Error("Nutrition values must be zero or positive numbers.");
+  return n;
+}
+
+function readCustomIngredientNutritionFromForm() {
+  return {
+    calories: readCiOptionalNumber("#ciCal"),
+    protein: readCiOptionalNumber("#ciProtein"),
+    carbs: readCiOptionalNumber("#ciCarbs"),
+    fat: readCiOptionalNumber("#ciFat"),
+    fiber: readCiOptionalNumber("#ciFiber"),
+    waterMl: readCiOptionalNumber("#ciWater"),
+    micros: {
+      vitaminA: readCiOptionalNumber("#ciMicro_vitaminA"),
+      vitaminC: readCiOptionalNumber("#ciMicro_vitaminC"),
+      vitaminK: readCiOptionalNumber("#ciMicro_vitaminK"),
+      potassium: readCiOptionalNumber("#ciMicro_potassium"),
+      calcium: readCiOptionalNumber("#ciMicro_calcium"),
+      iron: readCiOptionalNumber("#ciMicro_iron"),
+      magnesium: readCiOptionalNumber("#ciMicro_magnesium"),
+      folate: readCiOptionalNumber("#ciMicro_folate"),
+    },
+  };
+}
+
+function writeCustomIngredientNutritionToForm(n) {
+  if (!n) return;
+  if ($("#ciCal")) $("#ciCal").value = n.calories ?? "";
+  if ($("#ciProtein")) $("#ciProtein").value = n.protein ?? "";
+  if ($("#ciCarbs")) $("#ciCarbs").value = n.carbs ?? "";
+  if ($("#ciFat")) $("#ciFat").value = n.fat ?? "";
+  if ($("#ciFiber")) $("#ciFiber").value = n.fiber ?? "";
+  if ($("#ciWater")) $("#ciWater").value = n.waterMl ?? "";
+  const m = n.micros || {};
+  for (const k of Object.keys(MICRO_LABELS)) {
+    const el = $(`#ciMicro_${k}`);
+    if (el) el.value = m[k] ?? "";
+  }
+}
+
+function clearCustomIngredientForm() {
+  if ($("#ciEditId")) $("#ciEditId").value = "";
+  if ($("#ciName")) $("#ciName").value = "";
+  if ($("#ciCategory")) $("#ciCategory").value = "other";
+  if ($("#ciIcon")) $("#ciIcon").value = "";
+  if ($("#ciNotes")) $("#ciNotes").value = "";
+  writeCustomIngredientNutritionToForm({
+    calories: "",
+    protein: "",
+    carbs: "",
+    fat: "",
+    fiber: "",
+    waterMl: "",
+    micros: {},
+  });
+  for (const id of [
+    "ciMilkFree",
+    "ciGlutenFree",
+    "ciEggFree",
+    "ciNutFree",
+    "ciPeanutFree",
+    "ciShellfishFree",
+    "ciFishFree",
+    "ciSoyFree",
+    "ciSesameFree",
+    "ciVegetarian",
+    "ciVegan",
+  ]) {
+    if ($(`#${id}`)) $(`#${id}`).checked = true;
+  }
+  if ($("#ciFormStatus")) $("#ciFormStatus").textContent = "";
+  if ($("#saveCustomIngredientBtn")) $("#saveCustomIngredientBtn").textContent = "Save Custom Ingredient";
+}
+
+function loadCustomIngredientIntoForm(item) {
+  if (!item) return;
+  if ($("#ciEditId")) $("#ciEditId").value = item.id || "";
+  if ($("#ciName")) $("#ciName").value = item.name || "";
+  if ($("#ciCategory")) $("#ciCategory").value = item.category || "other";
+  if ($("#ciIcon")) $("#ciIcon").value = item.icon || "";
+  if ($("#ciNotes")) $("#ciNotes").value = item.notes || "";
+  writeCustomIngredientNutritionToForm(nutritionForItem(item));
+  if ($("#ciMilkFree")) $("#ciMilkFree").checked = item.milkFree !== false;
+  if ($("#ciGlutenFree")) $("#ciGlutenFree").checked = item.glutenFree !== false;
+  if ($("#ciEggFree")) $("#ciEggFree").checked = item.eggFree !== false;
+  if ($("#ciNutFree")) $("#ciNutFree").checked = item.nutFree !== false;
+  if ($("#ciPeanutFree")) $("#ciPeanutFree").checked = item.peanutFree !== false;
+  if ($("#ciShellfishFree")) $("#ciShellfishFree").checked = item.shellfishFree !== false;
+  if ($("#ciFishFree")) $("#ciFishFree").checked = item.fishFree !== false;
+  if ($("#ciSoyFree")) $("#ciSoyFree").checked = item.soyFree !== false;
+  if ($("#ciSesameFree")) $("#ciSesameFree").checked = item.sesameFree !== false;
+  if ($("#ciVegetarian")) $("#ciVegetarian").checked = item.vegetarian !== false;
+  if ($("#ciVegan")) $("#ciVegan").checked = item.vegan !== false;
+  if ($("#saveCustomIngredientBtn")) $("#saveCustomIngredientBtn").textContent = "Update Custom Ingredient";
+  if ($("#ciFormStatus")) $("#ciFormStatus").textContent = `Editing “${item.name}”`;
+  $("#customIngredientCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function saveCustomIngredientFromForm() {
+  const editId = $("#ciEditId")?.value || null;
+  const item = buildCustomIngredient({
+    id: editId || undefined,
+    name: $("#ciName")?.value,
+    category: $("#ciCategory")?.value || "other",
+    icon: $("#ciIcon")?.value,
+    notes: $("#ciNotes")?.value,
+    nutrition: readCustomIngredientNutritionFromForm(),
+    milkFree: !!$("#ciMilkFree")?.checked,
+    glutenFree: !!$("#ciGlutenFree")?.checked,
+    eggFree: !!$("#ciEggFree")?.checked,
+    nutFree: !!$("#ciNutFree")?.checked,
+    peanutFree: !!$("#ciPeanutFree")?.checked,
+    shellfishFree: !!$("#ciShellfishFree")?.checked,
+    fishFree: !!$("#ciFishFree")?.checked,
+    soyFree: !!$("#ciSoyFree")?.checked,
+    sesameFree: !!$("#ciSesameFree")?.checked,
+    vegetarian: !!$("#ciVegetarian")?.checked,
+    vegan: !!$("#ciVegan")?.checked,
+  });
+
+  state.customIngredients = state.customIngredients || [];
+  const existingIdx = state.customIngredients.findIndex((i) => i.id === item.id);
+  // Prevent duplicate names (case-insensitive) against other custom items
+  const nameKey = item.name.toLowerCase();
+  const dup = state.customIngredients.find(
+    (i) => i.id !== item.id && String(i.name || "").toLowerCase() === nameKey
+  );
+  if (dup) throw new Error(`You already have a custom ingredient named “${dup.name}”.`);
+
+  if (existingIdx >= 0) {
+    item.createdAt = state.customIngredients[existingIdx].createdAt || item.createdAt;
+    state.customIngredients[existingIdx] = item;
+  } else {
+    state.customIngredients.unshift(item);
+  }
+  if (state.customIngredients.length > 200) state.customIngredients.length = 200;
+
+  rebuildIngredientDb();
+  saveState(state);
+  award(state, "plan", 8);
+  log("custom-ingredient", existingIdx >= 0 ? "updated" : "created", item.name);
+  clearCustomIngredientForm();
+  renderCustomIngredientsList();
+  renderLibrary();
+  populateCustomBaseSelect();
+  toast(existingIdx >= 0 ? `Updated “${item.name}”` : `Added “${item.name}” to your ingredients`);
+}
+
+function deleteCustomIngredient(id) {
+  const item = (state.customIngredients || []).find((i) => i.id === id);
+  if (!item) return;
+  if (!confirm(`Delete custom ingredient “${item.name}”?`)) return;
+  state.customIngredients = (state.customIngredients || []).filter((i) => i.id !== id);
+  // Drop from preferred pins if present
+  state.preferredIds = (state.preferredIds || []).filter((pid) => pid !== id);
+  rebuildIngredientDb();
+  saveState(state);
+  log("custom-ingredient", "deleted", item.name);
+  if ($("#ciEditId")?.value === id) clearCustomIngredientForm();
+  renderCustomIngredientsList();
+  renderLibrary();
+  populateCustomBaseSelect();
+  toast(`Deleted “${item.name}”`);
+}
+
+function renderCustomIngredientsList() {
+  const box = $("#customIngredientsList");
+  if (!box) return;
+  const list = state.customIngredients || [];
+  if (!list.length) {
+    box.innerHTML = `<p class="meta">No custom ingredients yet. Use the form above to add one with macros and micros.</p>`;
+    return;
+  }
+  box.innerHTML = list
+    .map((i) => {
+      const n = nutritionForItem(i);
+      return `
+      <article class="custom-ing-row">
+        <div class="custom-ing-main">
+          <span class="ico">${iconFor(i)}</span>
+          <div>
+            <strong>${escapeHtml(i.name)}</strong>
+            <div class="meta">${escapeHtml(i.category)} · ${n.calories} kcal · P ${n.protein}g · C ${n.carbs}g · F ${n.fat}g · Fiber ${n.fiber}g</div>
+            ${i.notes ? `<div class="meta">${escapeHtml(i.notes)}</div>` : ""}
+          </div>
+        </div>
+        <div class="btn-row compact-row">
+          <button type="button" class="btn ghost" data-edit-ci="${escapeHtml(i.id)}">Edit</button>
+          <button type="button" class="btn danger" data-del-ci="${escapeHtml(i.id)}">Delete</button>
+        </div>
+      </article>`;
+    })
+    .join("");
+  box.querySelectorAll("[data-edit-ci]").forEach((btn) => {
+    btn.onclick = () => {
+      const item = (state.customIngredients || []).find((x) => x.id === btn.dataset.editCi);
+      loadCustomIngredientIntoForm(item);
+    };
+  });
+  box.querySelectorAll("[data-del-ci]").forEach((btn) => {
+    btn.onclick = () => deleteCustomIngredient(btn.dataset.delCi);
+  });
+}
+
+/* ---------- Ingredients Library (Nutrients tab) with nutrition info ---------- */
 function bindLibrary() {
   if ($("#iconLegend")) $("#iconLegend").innerHTML = iconLegendHtml();
   $("#libSearch")?.addEventListener("input", () => {
@@ -1436,22 +1766,73 @@ function bindLibrary() {
   $("#libCategory")?.addEventListener("change", renderLibrary);
 }
 
+function ingredientNutritionHtml(item) {
+  const n = nutritionForItem(item);
+  const microBits = Object.entries(MICRO_LABELS)
+    .map(([k, meta]) => `${meta.name}: ${n.micros?.[k] ?? 0} ${meta.unit}`)
+    .join(" · ");
+  const source = item.custom
+    ? "Your custom values (per typical blend portion)"
+    : "Estimated per typical blend portion";
+  return `
+    <div class="ing-nut-body">
+      <p class="meta"><strong>${escapeHtml(source)}</strong>${item.notes ? ` · ${escapeHtml(item.notes)}` : ""}</p>
+      <div class="ing-nut-macros">
+        <span><b>${n.calories}</b> kcal</span>
+        <span><b>${n.protein}</b>g protein</span>
+        <span><b>${n.carbs}</b>g carbs</span>
+        <span><b>${n.fat}</b>g fat</span>
+        <span><b>${n.fiber}</b>g fiber</span>
+        <span><b>~${n.waterMl}</b> ml water</span>
+      </div>
+      <p class="meta"><strong>Micronutrients:</strong> ${escapeHtml(microBits)}</p>
+      ${item.custom ? `<p class="meta"><em>Custom ingredient</em> — edit or delete under My Custom Ingredients.</p>` : ""}
+    </div>`;
+}
+
 function renderLibrary() {
   if (!$("#libOutput")) return;
   const q = $("#libSearch")?.value || "";
-  const cat = $("#libCategory")?.value || "";
-  const all = filterIngredients(db.ingredients, state.restrictions || { milk: true, gluten: true }, q, cat);
+  const catRaw = $("#libCategory")?.value || "";
+  const customOnly = catRaw === "__custom__";
+  const cat = customOnly ? "" : catRaw;
+  const r = getRestrictions();
+  const parts = restrictionsSummary(r);
+  const customCount = (state.customIngredients || []).length;
+  if ($("#libRestrictionsNote")) {
+    const base = parts.length
+      ? `Library filtered by: ${parts.join(" · ")}`
+      : "Showing whole-food ingredients (no restrictions active).";
+    $("#libRestrictionsNote").textContent = `${base}${customCount ? ` · ${customCount} custom ingredient(s) in catalog` : ""}`;
+  }
+  let all = filterIngredients(db.ingredients, r, q, cat);
+  if (customOnly) all = all.filter((i) => i.custom);
+  // Prefer custom ingredients first in results
+  all = [...all].sort((a, b) => {
+    if (!!a.custom !== !!b.custom) return a.custom ? -1 : 1;
+    return String(a.name).localeCompare(String(b.name));
+  });
+  if (!all.length) {
+    $("#libOutput").innerHTML = `<p class="hint">No ingredients match your search and dietary restrictions. Try clearing a filter, unchecking a restriction, or add a custom ingredient above.</p>`;
+    return;
+  }
   $("#libOutput").innerHTML = all
-    .slice(0, 120)
-    .map(
-      (i) => `
-    <article class="ing-card" role="listitem">
-      <div class="ico">${iconFor(i)}</div>
-      <div class="name">${escapeHtml(i.name)}</div>
-      <div class="cat">${escapeHtml(i.category)}</div>
-      <div class="tags">${(i.tags || []).slice(0, 3).map(escapeHtml).join(" · ")}</div>
-    </article>`
-    )
+    .slice(0, 80)
+    .map((i) => {
+      const n = nutritionForItem(i);
+      return `
+    <details class="ing-detail ${i.custom ? "ing-detail-custom" : ""}" role="listitem">
+      <summary class="ing-detail-summary">
+        <span class="ico">${iconFor(i)}</span>
+        <span class="ing-detail-main">
+          <span class="name">${escapeHtml(i.name)}${i.custom ? ' <span class="badge-custom">Custom</span>' : ""}</span>
+          <span class="cat">${escapeHtml(i.category)}${(i.tags || []).length ? " · " + (i.tags || []).slice(0, 3).map(escapeHtml).join(" · ") : ""}</span>
+        </span>
+        <span class="ing-detail-kcal meta">${n.calories} kcal · P ${n.protein}g · C ${n.carbs}g · F ${n.fat}g</span>
+      </summary>
+      ${ingredientNutritionHtml(i)}
+    </details>`;
+    })
     .join("");
 }
 
@@ -1516,6 +1897,8 @@ function barHtml(label, value, goal, unit = "") {
 }
 
 function renderNutrients() {
+  renderCustomIngredientsList();
+  renderLibrary();
   const g = goals();
   const plan = state.mealPlan;
   const sel = $("#nutrientDaySelect");
@@ -1678,32 +2061,27 @@ function renderGame() {
 
 /* ---------- Settings ---------- */
 function bindSettings() {
+  state.restrictions = getRestrictions();
   syncRestrictionControls();
 
   $("#saveRestrictionsBtn")?.addEventListener("click", () => {
     saveDietaryRestrictions("settings");
-    toast("Dietary restrictions saved");
+    toast("Dietary restrictions saved — meal plan & grocery updated");
   });
   $("#resetRestrictionsBtn")?.addEventListener("click", () => {
-    state.restrictions = { milk: true, gluten: true };
-    saveState(state);
-    syncRestrictionControls();
-    try {
-      populateCustomBaseSelect();
-      renderLibrary();
-      renderHome();
-    } catch {
-      /* ignore */
-    }
-    toast("Restrictions reset to No Milk + No Gluten");
+    state.restrictions = defaultRestrictions();
+    applyRestrictionChange(true);
+    toast("Restrictions reset to defaults (No Milk + No Gluten)");
   });
 
-  // Live toggle from Settings (synced to Weekly Plan checkboxes)
-  $("#settingsRestrictMilk")?.addEventListener("change", () => {
-    saveDietaryRestrictions("settings");
-  });
-  $("#settingsRestrictGluten")?.addEventListener("change", () => {
-    saveDietaryRestrictions("settings");
+  $("#settingsAddCustomRestriction")?.addEventListener("click", () =>
+    addCustomRestriction("#settingsCustomRestriction")
+  );
+  $("#settingsCustomRestriction")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addCustomRestriction("#settingsCustomRestriction");
+    }
   });
 
   $("#schedEnabled").checked = !!state.schedule?.enabled;
@@ -1793,11 +2171,11 @@ async function renderAccountPanel() {
   if (!box) return;
   currentUser = getCurrentUser();
   if (!currentUser) {
-    box.innerHTML = `<p class="meta">${isGuestMode() ? "Guest mode — full app access without an account." : "Not signed in."} Create an account anytime for a named profile and gravatar.</p>
+    box.innerHTML = `<p class="meta">An account is required to use LiquidFloodie. Create an account or log in to continue.</p>
       <div class="btn-row">
-        <button type="button" class="btn primary" id="openLoginBtn">Login / Register</button>
+        <button type="button" class="btn primary" id="openLoginBtn">Create Account / Login</button>
       </div>`;
-    $("#openLoginBtn").onclick = () => openAuth("register", { required: false });
+    $("#openLoginBtn").onclick = () => openAuth("register", { required: true });
     return;
   }
   const avatar = await resolveAvatar(currentUser, 96);
@@ -1822,13 +2200,13 @@ async function renderAccountPanel() {
   $("#logoutBtn").onclick = async () => {
     logout();
     currentUser = null;
-    setGuestMode(true);
     await refreshUserChrome();
-    unlockAppAfterAuth();
     renderAccountPanel();
-    toast("Signed out — continuing as guest");
+    lockAppForAuth();
+    openAuth("login", { required: true });
+    toast("Signed out — log in or create an account to continue");
   };
-  $("#openRecoverBtn").onclick = () => openAuth("recover");
+  $("#openRecoverBtn").onclick = () => openAuth("recover", { required: false });
 }
 
 function renderLogs() {
@@ -1892,7 +2270,7 @@ function bindSearch() {
     }
     state.analytics.searches = (state.analytics.searches || 0) + 1;
     saveState(state);
-    box.innerHTML = filterIngredients(db.ingredients, state.restrictions, q)
+    box.innerHTML = filterIngredients(db.ingredients, getRestrictions(), q)
       .slice(0, 15)
       .map((i) => `<button type="button" class="search-item" data-id="${i.id}">${iconFor(i)} ${escapeHtml(i.name)}</button>`)
       .join("");
@@ -1900,10 +2278,11 @@ function bindSearch() {
   $("#searchResults").onclick = (e) => {
     const b = e.target.closest("[data-id]");
     if (!b) return;
-    showTab("home");
+    showTab("nutrients");
     if ($("#libSearch")) {
       $("#libSearch").value = db.ingredients.find((i) => i.id === b.dataset.id)?.name || "";
       renderLibrary();
+      $("#ingredientsLibraryCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
     $("#quickSearchBar").classList.add("hide");
   };

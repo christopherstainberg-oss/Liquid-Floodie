@@ -735,6 +735,150 @@ label.check {
   color: var(--muted);
 }
 
+/* Custom ingredient list + form helpers */
+.custom-ing-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.custom-ing-row:last-child { border-bottom: none; }
+.custom-ing-main {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 0;
+  flex: 1;
+}
+.custom-ing-main .ico { font-size: 1.35rem; line-height: 1.2; }
+.compact-row { margin: 0; }
+.ci-flags {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px !important;
+}
+.ci-flags .check {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg) 40%, var(--bg2));
+}
+.badge-custom {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand) 22%, transparent);
+  color: var(--brand);
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.ing-detail-custom {
+  border-color: color-mix(in srgb, var(--brand) 35%, var(--line));
+}
+
+/* Ingredients library with expandable nutrition (Nutrients tab) */
+.ing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  max-height: min(70vh, 720px);
+  overflow: auto;
+}
+.ing-detail {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg) 40%, var(--bg2));
+  overflow: hidden;
+}
+.ing-detail[open] {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--line));
+}
+.ing-detail-summary {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px 12px;
+  align-items: center;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.ing-detail-summary::-webkit-details-marker { display: none; }
+.ing-detail-summary .ico {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.ing-detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ing-detail-main .name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.ing-detail-main .cat {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+.ing-detail-kcal {
+  font-size: 0.78rem;
+  text-align: right;
+  white-space: nowrap;
+}
+.ing-nut-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--line);
+}
+.ing-nut-macros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 10px 0;
+  font-size: 0.88rem;
+}
+.ing-nut-macros b {
+  color: var(--brand);
+}
+.restriction-grid.compact .restriction-item {
+  padding: 10px 12px;
+}
+.custom-restriction-row {
+  margin: 10px 0 4px;
+}
+.inline-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+.inline-add input {
+  flex: 1;
+  min-width: 0;
+}
+.chip.rem {
+  cursor: pointer;
+}
+@media (max-width: 640px) {
+  .ing-detail-summary {
+    grid-template-columns: auto 1fr;
+  }
+  .ing-detail-kcal {
+    grid-column: 2;
+    text-align: left;
+    white-space: normal;
+  }
+}
+
 /* ---------- Badges / game ---------- */
 .badge-grid {
   display: grid;
@@ -1021,19 +1165,6 @@ body.auth-locked .quick-search {
   margin-top: 8px;
   width: 100%;
 }
-.guest-cta {
-  margin: 0 0 16px;
-  padding: 14px 12px;
-  border: 1px dashed color-mix(in srgb, var(--brand) 45%, var(--line));
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--brand2) 12%, var(--bg2));
-  text-align: center;
-}
-.guest-cta .btn {
-  width: 100%;
-  max-width: 340px;
-}
-
 /* Bottom nav: ensure always clickable above content */
 .tab-nav {
   z-index: 90 !important;

@@ -11,7 +11,21 @@ const IDB_NAME = "liquidfloodie-db";
 const IDB_STORE = "kv";
 
 const DEFAULTS = {
-  restrictions: { milk: true, gluten: true },
+  /** Preset checkboxes + custom avoid keywords — see engine.defaultRestrictions() */
+  restrictions: {
+    milk: true,
+    gluten: true,
+    egg: false,
+    nuts: false,
+    peanuts: false,
+    shellfish: false,
+    fish: false,
+    soy: false,
+    sesame: false,
+    meat: false,
+    animal: false,
+    custom: [],
+  },
   mealsPerDay: 2,
   ingredientCount: 3,
   preferredIds: [],
@@ -19,6 +33,8 @@ const DEFAULTS = {
   groceryList: null,
   /** User-built named meals (base + 2–5 ingredients) */
   customMeals: [],
+  /** User-created ingredients with macros/micros (merged into catalog at runtime) */
+  customIngredients: [],
   schedule: {
     enabled: false,
     hour: 8,
