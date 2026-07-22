@@ -631,34 +631,37 @@
       </div>
 
       <div class="auth-tabs" role="tablist">
-        <button type="button" class="auth-tab" data-auth="login">Login</button>
-        <button type="button" class="auth-tab active" data-auth="register">Create Account</button>
-        <button type="button" class="auth-tab" data-auth="recover">Password Recovery</button>
+        <button type="button" class="auth-tab" data-auth="login" id="authTabLogin">Login</button>
+        <button type="button" class="auth-tab active" data-auth="register" id="authTabRegister">Create Account</button>
+        <button type="button" class="auth-tab" data-auth="recover" id="authTabRecover">Password Recovery</button>
       </div>
 
-      <form id="formLogin" class="auth-form hide">
+      <p class="auth-error" id="authError" role="alert" hidden></p>
+
+      <form id="formLogin" class="auth-form hide" novalidate>
         <label>Email <input type="email" id="loginEmail" required autocomplete="username" /></label>
         <label>Password <input type="password" id="loginPassword" required autocomplete="current-password" minlength="8" /></label>
-        <button type="submit" class="btn primary">Sign In</button>
+        <button type="submit" class="btn primary" id="loginSubmitBtn">Sign In</button>
       </form>
 
-      <form id="formRegister" class="auth-form">
+      <form id="formRegister" class="auth-form" novalidate>
         <label>Email <input type="email" id="regEmail" required autocomplete="username" /></label>
         <label>Display Name <input type="text" id="regName" maxlength="40" autocomplete="nickname" /></label>
         <label>Password <input type="password" id="regPassword" required autocomplete="new-password" minlength="8" /></label>
-        <label>Security Question <select id="regQuestion"></select></label>
+        <label>Security Question <select id="regQuestion" required></select></label>
         <label>Security Answer <input type="text" id="regAnswer" required autocomplete="off" /></label>
-        <button type="submit" class="btn primary">Create Account</button>
+        <button type="submit" class="btn primary" id="registerSubmitBtn">Create Account</button>
         <p class="meta">Passwords are hashed with PBKDF2 (120k iterations). Accounts stay on this device.</p>
       </form>
 
-      <form id="formRecover" class="auth-form hide">
-        <label>Email <input type="email" id="recEmail" required /></label>
+      <form id="formRecover" class="auth-form hide" novalidate>
+        <p class="meta recover-hint">Accounts are stored only on this device. Use the same browser/device where you created the account.</p>
+        <label>Email <input type="email" id="recEmail" required autocomplete="username" inputmode="email" /></label>
         <button type="button" class="btn ghost" id="loadQuestionBtn">Load My Security Question</button>
-        <p class="meta" id="recQuestion">—</p>
-        <label>Security Answer <input type="text" id="recAnswer" autocomplete="off" /></label>
-        <label>New Password <input type="password" id="recPassword" minlength="8" autocomplete="new-password" /></label>
-        <button type="submit" class="btn primary">Reset Password</button>
+        <p class="meta rec-question" id="recQuestion" aria-live="polite">Your security question will appear here.</p>
+        <label>Security Answer <input type="text" id="recAnswer" required autocomplete="off" /></label>
+        <label>New Password <input type="password" id="recPassword" required minlength="8" autocomplete="new-password" /></label>
+        <button type="submit" class="btn primary" id="recoverSubmitBtn">Reset Password</button>
       </form>
     </div>
   </div>

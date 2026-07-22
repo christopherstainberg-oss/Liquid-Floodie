@@ -52,6 +52,7 @@ import {
   listSecurityQuestions,
   updateProfile,
   resolveAvatar,
+  cryptoReady,
 } from "./src/auth.js";
 import { iconFor, iconLegendHtml } from "./src/icons.js";
 import {
@@ -125,9 +126,25 @@ function dailyLog(date = todayKey()) {
 
 /* ---------- bootstrap ---------- */
 async function boot() {
-  // Wire nav + auth first so login gate and tabs always respond
-  bindNav();
-  bindAuth();
+  // Wire nav + auth FIRST and show the gate immediately so Login / Create Account
+  // respond even while meal-plan generation or hydrate is still running.
+  try {
+    bindNav();
+  } catch (e) {
+    console.warn("bindNav", e);
+  }
+  try {
+    bindAuth();
+  } catch (e) {
+    console.error("bindAuth failed — login buttons will not work", e);
+    toast("Auth UI failed to start. Try a hard refresh.", "error");
+  }
+
+  currentUser = getCurrentUser();
+  if (!canUseApp()) {
+    lockAppForAuth();
+    openAuth("register", { required: true });
+  }
 
   try {
     state = await hydrateFromDb(state);
@@ -147,26 +164,47 @@ async function boot() {
     console.warn("init state", e);
   }
 
-  bindHome();
-  bindPlan();
-  bindGrocery();
-  bindNutrients();
-  bindLibrary();
-  bindCustomIngredients();
-  bindGame();
-  bindSettings();
-  bindSearch();
-  bindShare();
-  maybeScheduleTick();
+  const binders = [
+    bindHome,
+    bindPlan,
+    bindGrocery,
+    bindNutrients,
+    bindLibrary,
+    bindCustomIngredients,
+    bindGame,
+    bindSettings,
+    bindSearch,
+    bindShare,
+  ];
+  for (const fn of binders) {
+    try {
+      fn();
+    } catch (e) {
+      console.warn(fn.name || "bind", e);
+    }
+  }
+  try {
+    maybeScheduleTick();
+  } catch (e) {
+    console.warn("schedule", e);
+  }
 
   currentUser = getCurrentUser();
   const params = new URLSearchParams(location.search);
 
-  // Autogenerate weekly + daily meal plan if none exists
-  ensureAutoMealPlan();
+  // Heavy work after auth UI is live
+  try {
+    ensureAutoMealPlan();
+  } catch (e) {
+    console.warn("auto meal plan", e);
+  }
 
-  await refreshUserChrome();
-  renderAll();
+  try {
+    await refreshUserChrome();
+    renderAll();
+  } catch (e) {
+    console.warn("initial render", e);
+  }
 
   // Account required — no guest access
   if (canUseApp()) {
@@ -274,15 +312,31 @@ function rotateMealAt(dayNum, mealIndex) {
   log("plan", "rotate-meal", `day-${dayNum}-m${mealIndex}`);
 }
 
-function toast(msg) {
+function toast(msg, kind = "info") {
   const t = $("#toast");
   if (!t) return;
   t.hidden = false;
   t.textContent = msg;
+  t.dataset.kind = kind === "error" ? "error" : "info";
   clearTimeout(toast._t);
   toast._t = setTimeout(() => {
     t.hidden = true;
-  }, 2800);
+    delete t.dataset.kind;
+  }, kind === "error" ? 4200 : 2800);
+}
+
+function showAuthError(msg) {
+  const el = $("#authError");
+  if (el) {
+    el.hidden = !msg;
+    el.textContent = msg || "";
+    el.classList.toggle("is-visible", !!msg);
+  }
+  if (msg) toast(msg, "error");
+}
+
+function clearAuthError() {
+  showAuthError("");
 }
 
 function showTab(name) {
@@ -362,26 +416,52 @@ async function onAuthSuccess(user, message) {
   toast(message || `Welcome, ${user.displayName}`);
 }
 
+function setAuthBusy(form, busy, label) {
+  if (!form) return;
+  form.querySelectorAll("button[type='submit'], button[type='button']").forEach((btn) => {
+    if (busy) {
+      if (!btn.dataset.label) btn.dataset.label = btn.textContent || "";
+      btn.disabled = true;
+      if (btn.type === "submit" && label) btn.textContent = label;
+    } else {
+      btn.disabled = false;
+      if (btn.dataset.label) {
+        btn.textContent = btn.dataset.label;
+        delete btn.dataset.label;
+      }
+    }
+  });
+}
+
 function bindAuth() {
   const modal = $("#authModal");
-  if (!modal) return;
+  if (!modal) {
+    console.error("authModal missing from DOM");
+    return;
+  }
 
-  $("#accountBtn").onclick = () => {
-    if (getCurrentUser()) {
-      showTab("settings");
-      return;
-    }
-    openAuth("login", { required: true });
-  };
+  const accountBtn = $("#accountBtn");
+  if (accountBtn) {
+    accountBtn.onclick = () => {
+      if (getCurrentUser()) {
+        showTab("settings");
+        return;
+      }
+      openAuth("login", { required: true });
+    };
+  }
 
   // Close only allowed when already signed in (gate cannot be dismissed)
-  $("#authClose").onclick = () => {
-    if (!getCurrentUser()) {
-      toast("Create an account or log in to use LiquidFloodie");
-      return;
-    }
-    unlockAppAfterAuth();
-  };
+  const authClose = $("#authClose");
+  if (authClose) {
+    authClose.onclick = () => {
+      if (!getCurrentUser()) {
+        showAuthError("Create an account or log in to use LiquidFloodie");
+        return;
+      }
+      unlockAppAfterAuth();
+    };
+  }
   modal.addEventListener("click", (e) => {
     if (e.target !== modal) return;
     // Required gate: do not dismiss without an account
@@ -390,72 +470,213 @@ function bindAuth() {
   });
 
   $$(".auth-tab").forEach((tab) => {
-    tab.onclick = () => openAuth(tab.dataset.auth, { required: !canUseApp() });
+    tab.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      clearAuthError();
+      openAuth(tab.dataset.auth, { required: !canUseApp() });
+    });
   });
 
   const qs = listSecurityQuestions();
-  if ($("#regQuestion")) {
-    $("#regQuestion").innerHTML = qs
+  const regQ = $("#regQuestion");
+  if (regQ) {
+    regQ.innerHTML = qs
       .map((q) => `<option value="${escapeHtml(q)}">${escapeHtml(q)}</option>`)
       .join("");
   }
 
-  $("#formLogin").onsubmit = async (e) => {
-    e.preventDefault();
+  async function handleLogin(e) {
+    e?.preventDefault?.();
+    clearAuthError();
+    const form = $("#formLogin");
+    const email = ($("#loginEmail")?.value || "").trim();
+    const password = $("#loginPassword")?.value || "";
+    if (!email || !email.includes("@")) {
+      showAuthError("Enter a valid email address.");
+      $("#loginEmail")?.focus();
+      return;
+    }
+    if (!password || password.length < 8) {
+      showAuthError("Password must be at least 8 characters.");
+      $("#loginPassword")?.focus();
+      return;
+    }
+    setAuthBusy(form, true);
     try {
-      const user = await login($("#loginEmail").value, $("#loginPassword").value);
+      const user = await login(email, password);
       log("auth", "login ok", user.email);
       await onAuthSuccess(user, `Welcome back, ${user.displayName}`);
     } catch (err) {
-      toast(err.message);
+      console.error("login failed", err);
+      showAuthError(err?.message || "Sign in failed.");
+    } finally {
+      setAuthBusy(form, false);
     }
-  };
+  }
 
-  $("#formRegister").onsubmit = async (e) => {
-    e.preventDefault();
+  async function handleRegister(e) {
+    e?.preventDefault?.();
+    clearAuthError();
+    const form = $("#formRegister");
+    const email = ($("#regEmail")?.value || "").trim();
+    const password = $("#regPassword")?.value || "";
+    const answer = ($("#regAnswer")?.value || "").trim();
+    if (!email || !email.includes("@")) {
+      showAuthError("Enter a valid email address.");
+      $("#regEmail")?.focus();
+      return;
+    }
+    if (!password || password.length < 8) {
+      showAuthError("Password must be at least 8 characters.");
+      $("#regPassword")?.focus();
+      return;
+    }
+    if (!answer) {
+      showAuthError("Enter an answer for your security question.");
+      $("#regAnswer")?.focus();
+      return;
+    }
+    setAuthBusy(form, true);
     try {
       const user = await registerAccount({
-        email: $("#regEmail").value,
-        password: $("#regPassword").value,
-        displayName: $("#regName").value,
-        securityQuestion: $("#regQuestion").value,
-        securityAnswer: $("#regAnswer").value,
+        email,
+        password,
+        displayName: $("#regName")?.value,
+        securityQuestion: $("#regQuestion")?.value,
+        securityAnswer: answer,
       });
       log("auth", "register ok", user.email);
       await onAuthSuccess(user, "Account created — welcome to LiquidFloodie");
     } catch (err) {
-      toast(err.message);
+      console.error("register failed", err);
+      showAuthError(err?.message || "Could not create account.");
+    } finally {
+      setAuthBusy(form, false);
     }
-  };
+  }
 
-  $("#loadQuestionBtn").onclick = () => {
+  let recoverInFlight = false;
+
+  function loadRecoveryQuestion({ silent = false } = {}) {
+    clearAuthError();
+    const email = ($("#recEmail")?.value || "").trim();
+    if (!email) {
+      if (!silent) {
+        showAuthError("Enter your account email, then load your security question.");
+        $("#recEmail")?.focus();
+      }
+      return false;
+    }
     try {
-      $("#recQuestion").textContent = getRecoveryQuestion($("#recEmail").value);
+      const q = getRecoveryQuestion(email);
+      const box = $("#recQuestion");
+      if (box) {
+        box.textContent = q;
+        box.classList.add("rec-question-loaded");
+      }
+      if (!silent) toast("Security question loaded");
+      return true;
     } catch (err) {
-      toast(err.message);
+      if ($("#recQuestion")) {
+        $("#recQuestion").textContent = "—";
+        $("#recQuestion").classList.remove("rec-question-loaded");
+      }
+      if (!silent) showAuthError(err?.message || "Could not load security question.");
+      return false;
     }
-  };
+  }
 
-  $("#formRecover").onsubmit = async (e) => {
-    e.preventDefault();
+  async function handleRecover(e) {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    if (recoverInFlight) return;
+    clearAuthError();
+
+    const form = $("#formRecover");
+    const email = ($("#recEmail")?.value || "").trim();
+    const answer = ($("#recAnswer")?.value || "").trim();
+    const newPassword = $("#recPassword")?.value || "";
+
+    if (!email || !email.includes("@")) {
+      showAuthError("Enter the email for your account.");
+      $("#recEmail")?.focus();
+      return;
+    }
+    if (!answer) {
+      showAuthError("Enter the answer to your security question.");
+      // Try to surface the question so the user knows what to answer
+      loadRecoveryQuestion({ silent: true });
+      $("#recAnswer")?.focus();
+      return;
+    }
+    if (!newPassword || newPassword.length < 8) {
+      showAuthError("New password must be at least 8 characters.");
+      $("#recPassword")?.focus();
+      return;
+    }
+
+    recoverInFlight = true;
+    setAuthBusy(form, true, "Resetting…");
     try {
       const user = await recoverPassword({
-        email: $("#recEmail").value,
-        securityAnswer: $("#recAnswer").value,
-        newPassword: $("#recPassword").value,
+        email,
+        securityAnswer: answer,
+        newPassword,
       });
       log("auth", "password recovered", user.email);
       await onAuthSuccess(user, "Password reset — you are signed in");
     } catch (err) {
-      toast(err.message);
+      console.error("recover failed", err);
+      showAuthError(err?.message || "Password recovery failed.");
+      $("#recoverSubmitBtn")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    } finally {
+      recoverInFlight = false;
+      setAuthBusy(form, false);
     }
-  };
+  }
+
+  const formLogin = $("#formLogin");
+  const formRegister = $("#formRegister");
+  const formRecover = $("#formRecover");
+  if (formLogin) formLogin.onsubmit = handleLogin;
+  if (formRegister) formRegister.onsubmit = handleRegister;
+  if (formRecover) formRecover.onsubmit = handleRecover;
+
+  // Explicit click handlers so buttons work even if submit is blocked by a parent
+  $("#loginSubmitBtn")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    handleLogin(e);
+  });
+  $("#registerSubmitBtn")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    handleRegister(e);
+  });
+  $("#recoverSubmitBtn")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleRecover(e);
+  });
+
+  $("#loadQuestionBtn")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    loadRecoveryQuestion({ silent: false });
+  });
+
+  // Auto-load question when email is filled and user moves to answer/password
+  $("#recEmail")?.addEventListener("change", () => loadRecoveryQuestion({ silent: true }));
+  $("#recAnswer")?.addEventListener("focus", () => {
+    const q = ($("#recQuestion")?.textContent || "").trim();
+    if (!q || q === "—") loadRecoveryQuestion({ silent: true });
+  });
 }
 
 function openAuth(which, opts = {}) {
   const modal = $("#authModal");
   if (!modal) return;
   const required = !!opts.required || !getCurrentUser();
+  clearAuthError();
 
   modal.classList.remove("hide");
   if (required) {
@@ -478,13 +699,37 @@ function openAuth(which, opts = {}) {
       which === "login" ? "Login" : which === "register" ? "Create Account" : "Password Recovery";
   }
   if ($(".auth-tagline")) {
-    $(".auth-tagline").textContent = required
-      ? "Create an account or log in to use LiquidFloodie. Accounts stay on this device."
-      : "Whole-Food Liquid Meals While Maintaining Dietary Restrictions";
+    let base =
+      which === "recover"
+        ? "Enter your email, load your security question, answer it, then set a new password."
+        : required
+          ? "Create an account or log in to use LiquidFloodie. Accounts stay on this device."
+          : "Whole-Food Liquid Meals While Maintaining Dietary Restrictions";
+    if (!cryptoReady()) {
+      base += " (Secure hashing fallback active — prefer HTTPS when available.)";
+    }
+    $(".auth-tagline").textContent = base;
   }
+
+  // Prefill recover email from login field or current session
+  if (which === "recover") {
+    const rec = $("#recEmail");
+    if (rec && !rec.value) {
+      const fromLogin = ($("#loginEmail")?.value || "").trim();
+      const fromUser = getCurrentUser()?.email || "";
+      rec.value = fromLogin || fromUser || "";
+    }
+    if ($("#recQuestion") && (!$("#recQuestion").textContent || $("#recQuestion").textContent === "—")) {
+      // leave placeholder until load
+    }
+  }
+
   setTimeout(() => {
     const id = which === "login" ? "loginEmail" : which === "register" ? "regEmail" : "recEmail";
     document.getElementById(id)?.focus();
+    if (which === "recover") {
+      $("#recoverSubmitBtn")?.scrollIntoView({ block: "nearest" });
+    }
   }, 50);
 }
 

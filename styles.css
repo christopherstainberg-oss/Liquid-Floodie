@@ -904,6 +904,7 @@ label.check {
 }
 
 /* ---------- Toast (centered) ---------- */
+/* Must sit above .modal (z-index 200) so auth errors are visible on the login gate */
 .toast {
   position: fixed;
   left: 50%;
@@ -914,12 +915,37 @@ label.check {
   padding: 11px 18px;
   border-radius: 999px;
   font-size: 0.9rem;
-  z-index: 80;
+  z-index: 300;
   max-width: min(90vw, var(--max));
   text-align: center;
   box-shadow: var(--shadow);
+  pointer-events: none;
+}
+.toast[data-kind="error"] {
+  background: #9f1239;
+  color: #fff;
 }
 .hide { display: none !important; }
+
+.auth-error {
+  display: none;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, #e11d48 14%, var(--bg2));
+  border: 1px solid color-mix(in srgb, #e11d48 45%, var(--line));
+  color: #9f1239;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  text-align: left;
+}
+.auth-error.is-visible {
+  display: block;
+}
+.auth-form .btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
 
 /* ---------- Account ---------- */
 .user-chip {
@@ -1164,6 +1190,32 @@ body.auth-locked .quick-search {
 .auth-form .btn {
   margin-top: 8px;
   width: 100%;
+  position: relative;
+  z-index: 1;
+  touch-action: manipulation;
+  min-height: 48px;
+}
+.auth-form .btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+.recover-hint {
+  margin: 0 0 10px;
+  text-align: left;
+}
+.rec-question {
+  margin: 4px 0 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--brand) 8%, var(--bg2));
+  border: 1px solid var(--line);
+  min-height: 2.5em;
+  text-align: left;
+  color: var(--ink);
+  font-weight: 600;
+}
+.rec-question.rec-question-loaded {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--line));
 }
 /* Bottom nav: ensure always clickable above content */
 .tab-nav {
