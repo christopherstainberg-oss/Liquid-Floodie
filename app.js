@@ -159,12 +159,6 @@ async function boot() {
   if (!currentUser && (params.get("guest") === "1" || params.get("go") === "guest")) {
     setGuestMode(true);
   }
-  // First visit this session: auto-enter guest so users are never stuck on login
-  if (!currentUser && !isGuestMode()) {
-    setGuestMode(true);
-  }
-
-  unlockAppAfterAuth();
 
   // Autogenerate weekly + daily meal plan if none exists
   ensureAutoMealPlan();
@@ -179,6 +173,15 @@ async function boot() {
 
   await refreshUserChrome();
   renderAll();
+
+  // First visit / no session: show Login + Create Account (do not auto-skip as guest)
+  if (canUseApp()) {
+    unlockAppAfterAuth();
+  } else {
+    lockAppForAuth();
+    openAuth("register", { required: true });
+  }
+
   registerSW();
 }
 
@@ -371,28 +374,31 @@ function bindAuth() {
       showTab("settings");
       return;
     }
-    // Optional login — never locks the app
-    openAuth("login", { required: false });
+    openAuth("login", { required: !canUseApp() });
   };
 
   $("#authClose").onclick = () => {
-    // Always allow closing; ensure guest mode so app stays usable
+    // Closing without an account continues as guest
     if (!getCurrentUser()) setGuestMode(true);
     unlockAppAfterAuth();
     showTab("home");
     renderAll();
+    refreshUserChrome();
   };
   modal.addEventListener("click", (e) => {
-    if (e.target === modal) {
-      if (!getCurrentUser()) setGuestMode(true);
-      unlockAppAfterAuth();
-      showTab("home");
-      renderAll();
-    }
+    // Backdrop click only dismisses when not a required gate
+    if (e.target !== modal) return;
+    if (modal.classList.contains("auth-gate") && !getCurrentUser() && !isGuestMode()) return;
+    if (!getCurrentUser()) setGuestMode(true);
+    unlockAppAfterAuth();
+    showTab("home");
+    renderAll();
+    refreshUserChrome();
   });
 
   $$(".auth-tab").forEach((tab) => {
-    tab.onclick = () => openAuth(tab.dataset.auth, { required: false });
+    tab.onclick = () =>
+      openAuth(tab.dataset.auth, { required: !canUseApp() });
   });
 
   const qs = listSecurityQuestions();
@@ -457,12 +463,21 @@ function bindAuth() {
 function openAuth(which, opts = {}) {
   const modal = $("#authModal");
   if (!modal) return;
-  // Login is always optional — never trap users behind a required gate
+  const required = !!opts.required && !getCurrentUser() && !isGuestMode();
+
   modal.classList.remove("hide");
-  modal.classList.remove("auth-gate");
-  document.body.classList.remove("auth-locked");
-  $("#authClose")?.classList.remove("hide");
-  $("#guestCta")?.classList.toggle("hide", !!getCurrentUser());
+  if (required) {
+    // Full-screen gate: Login / Create Account / Continue Without Account
+    modal.classList.add("auth-gate");
+    document.body.classList.add("auth-locked");
+    $("#authClose")?.classList.add("hide");
+    $("#guestCta")?.classList.remove("hide");
+  } else {
+    modal.classList.remove("auth-gate");
+    document.body.classList.remove("auth-locked");
+    $("#authClose")?.classList.remove("hide");
+    $("#guestCta")?.classList.toggle("hide", !!getCurrentUser());
+  }
 
   $$(".auth-tab").forEach((t) => t.classList.toggle("active", t.dataset.auth === which));
   $("#formLogin")?.classList.toggle("hide", which !== "login");

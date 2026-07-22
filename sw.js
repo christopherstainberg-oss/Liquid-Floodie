@@ -1,5 +1,5 @@
-/* LiquidFloodie service worker — offline-first shell + data */
-const SHELL_VERSION = "v18";
+/* LiquidFloodie service worker — offline shell; prefer network for app code after deploy */
+const SHELL_VERSION = "v20";
 const SHELL_CACHE = "liquidfloodie-shell-" + SHELL_VERSION;
 const SHELL_ASSETS = [
   "./",
@@ -15,6 +15,8 @@ const SHELL_ASSETS = [
 ];
 
 self.addEventListener("install", (e) => {
+  // Activate updated SW immediately so deploy fixes (auth/buttons) reach clients
+  self.skipWaiting();
   e.waitUntil(caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL_ASSETS)).catch(() => {}));
 });
 
@@ -30,19 +32,44 @@ self.addEventListener("message", (e) => {
   if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
+/** Network-first for HTML/JS so deploys are not stuck on a broken cached bundle */
+function isAppShell(url) {
+  const path = url.pathname;
+  return (
+    path.endsWith("/") ||
+    path.endsWith("/index.html") ||
+    path.endsWith("/app.bundle.js") ||
+    path.endsWith("/sw.js") ||
+    path.endsWith("/styles.css")
+  );
+}
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
-  if (req.mode === "navigate") {
-    e.respondWith(fetch(req).catch(() => caches.match("./index.html")));
+  const url = new URL(req.url);
+
+  if (req.mode === "navigate" || isAppShell(url)) {
+    e.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req).then((c) => c || caches.match("./index.html")))
+    );
     return;
   }
+
   e.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
       return fetch(req).then((res) => {
         const copy = res.clone();
-        if (res.ok && new URL(req.url).origin === self.location.origin) {
+        if (res.ok && url.origin === self.location.origin) {
           caches.open(SHELL_CACHE).then((c) => c.put(req, copy));
         }
         return res;

@@ -30,20 +30,25 @@ mkdirSync(dist, { recursive: true });
 mkdirSync(join(dist, "data"), { recursive: true });
 mkdirSync(join(dist, "icons"), { recursive: true });
 
-// Inline-bundle: convert export modules to IIFE globals for zero-tooling browsers
+// Inline-bundle: convert ES modules to a single classic script (no type=module).
+// Any leftover export/import *statements* throw and kill all UI handlers in Docker/Pages.
+// Do not strip bare "export " text inside comments/strings (e.g. "export your grocery").
 function stripModule(src) {
   return src
-    .replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?\s*/g, "")
-    .replace(/^export\s+async\s+function\s+/gm, "async function ")
-    .replace(/^export\s+function\s+/gm, "function ")
-    .replace(/^export\s+const\s+/gm, "const ")
-    .replace(/^export\s+\{[^}]+\};?\s*/gm, "")
-    .replace(/^export\s+default\s+/gm, "");
+    // multi-line imports: import { a, b } from "./x.js";
+    .replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"]\s*;?/g, "")
+    .replace(/import\s+['"][^'"]+['"]\s*;?/g, "")
+    .replace(/export\s+async\s+function\s+/g, "async function ")
+    .replace(/export\s+function\s+/g, "function ")
+    .replace(/export\s+const\s+/g, "const ")
+    .replace(/export\s+let\s+/g, "let ")
+    .replace(/export\s+var\s+/g, "var ")
+    .replace(/export\s+class\s+/g, "class ")
+    .replace(/export\s+default\s+/g, "")
+    .replace(/export\s*\{[^}]*\}\s*;?/g, "");
 }
 
-const ingredients = readFileSync(join(root, "data", "ingredients.js"), "utf8")
-  .replace(/^export const INGREDIENT_DB = /, "const INGREDIENT_DB = ")
-  .replace(/^export default INGREDIENT_DB;\s*$/m, "");
+const ingredients = stripModule(readFileSync(join(root, "data", "ingredients.js"), "utf8"));
 const engine = stripModule(readFileSync(join(root, "src", "engine.js"), "utf8"));
 const storage = stripModule(readFileSync(join(root, "src", "storage.js"), "utf8"));
 const auth = stripModule(readFileSync(join(root, "src", "auth.js"), "utf8"));
@@ -60,6 +65,21 @@ ${icons}
 ${nutrition}
 ${app}
 `;
+
+// Fail the build if leftover module *statements* would kill classic <script> (deployment killer).
+// Note: English words like "export" in comments/strings are fine.
+const leftoverModule = bundle.match(/(?:^|[\n;])\s*(?:export|import)\s+[\w*{]/m);
+if (leftoverModule) {
+  throw new Error(
+    `Build refused: leftover module statement near "${leftoverModule[0].trim().slice(0, 40)}" — buttons would not work after deploy.`
+  );
+}
+try {
+  // eslint-disable-next-line no-new-func
+  new Function(bundle);
+} catch (err) {
+  throw new Error(`Build refused: app.bundle.js is not valid classic JS: ${err.message}`);
+}
 
 writeFileSync(join(dist, "app.bundle.js"), bundle);
 
