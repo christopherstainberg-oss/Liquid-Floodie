@@ -186,7 +186,7 @@
       <!-- Create Your Own Meal -->
       <div class="card custom-meal-card">
         <h2 id="custom-meal-title">Create Your Own Meal</h2>
-        <p class="hint">Name your blend, pick a liquid base, search whole-food ingredients, and add 2–5 items that match your dietary restrictions.</p>
+        <p class="hint">Name your blend, pick a liquid base, search whole-food ingredients, and add 2–5 items that match your dietary restrictions. Optionally set serving size, total calories, macronutrients, and micronutrients.</p>
 
         <label class="block-label">
           Meal Name
@@ -206,6 +206,95 @@
 
         <h3 class="custom-subhead">Ingredients In This Meal <span class="meta" id="customIngCount">(0 / 5)</span></h3>
         <div id="customIngSelected" class="chip-row" aria-live="polite"></div>
+
+        <h3 class="custom-subhead">Serving Size</h3>
+        <p class="hint">How large is one serving of this meal? Units: grams, ounces, milliliters, or liters.</p>
+        <div class="form-grid serving-grid">
+          <label>
+            Amount
+            <input type="number" id="customServingAmount" min="0" step="any" placeholder="e.g. 350" inputmode="decimal" />
+          </label>
+          <label>
+            Unit
+            <select id="customServingUnit">
+              <option value="g">Grams (g)</option>
+              <option value="oz">Ounces (oz)</option>
+              <option value="mL" selected>Milliliters (mL)</option>
+              <option value="L">Liters (L)</option>
+            </select>
+          </label>
+        </div>
+
+        <h3 class="custom-subhead">Nutrition Per Serving</h3>
+        <p class="hint">Enter your own values, or estimate from the selected ingredients. Leave blank to use ingredient estimates when you save.</p>
+        <div class="btn-row">
+          <button type="button" class="btn" id="estimateCustomNutritionBtn">Estimate From Ingredients</button>
+          <button type="button" class="btn ghost" id="clearCustomNutritionBtn">Clear Nutrition Fields</button>
+        </div>
+
+        <h4 class="custom-nut-heading">Total Calories</h4>
+        <div class="form-grid">
+          <label>
+            Calories (kcal)
+            <input type="number" id="customCal" min="0" step="1" placeholder="e.g. 320" inputmode="numeric" />
+          </label>
+        </div>
+
+        <h4 class="custom-nut-heading">Macronutrients</h4>
+        <div class="form-grid">
+          <label>
+            Protein (g)
+            <input type="number" id="customProtein" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Carbs (g)
+            <input type="number" id="customCarbs" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Fat (g)
+            <input type="number" id="customFat" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Fiber (g)
+            <input type="number" id="customFiber" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+        </div>
+
+        <h4 class="custom-nut-heading">Micronutrients</h4>
+        <div class="form-grid micro-form-grid" id="customMicroFields">
+          <label>
+            Vitamin A (µg RAE)
+            <input type="number" id="customMicro_vitaminA" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Vitamin C (mg)
+            <input type="number" id="customMicro_vitaminC" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Vitamin K (µg)
+            <input type="number" id="customMicro_vitaminK" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Potassium (mg)
+            <input type="number" id="customMicro_potassium" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Calcium (mg)
+            <input type="number" id="customMicro_calcium" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Iron (mg)
+            <input type="number" id="customMicro_iron" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Magnesium (mg)
+            <input type="number" id="customMicro_magnesium" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+          <label>
+            Folate (µg)
+            <input type="number" id="customMicro_folate" min="0" step="0.1" placeholder="0" inputmode="decimal" />
+          </label>
+        </div>
 
         <div class="btn-row">
           <button type="button" class="btn primary" id="saveCustomMealBtn">Save Custom Meal</button>

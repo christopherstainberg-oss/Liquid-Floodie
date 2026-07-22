@@ -398,6 +398,22 @@ label textarea:focus {
   margin: 0 0 6px;
   font-size: 1rem;
 }
+.custom-nut-heading {
+  margin: 14px 0 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.serving-grid {
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr);
+}
+.micro-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+.custom-meal-card input[type="number"] {
+  width: 100%;
+  min-height: 42px;
+}
 
 .restriction-grid {
   display: flex;

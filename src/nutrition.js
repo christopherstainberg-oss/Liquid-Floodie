@@ -108,7 +108,70 @@ function addNutrition(acc, n) {
   return acc;
 }
 
+/** Serving size units for user-created meals */
+export const SERVING_UNITS = [
+  { id: "g", label: "Grams (g)", kind: "mass" },
+  { id: "oz", label: "Ounces (oz)", kind: "mass" },
+  { id: "mL", label: "Milliliters (mL)", kind: "volume" },
+  { id: "L", label: "Liters (L)", kind: "volume" },
+];
+
+export function formatServing(serving) {
+  if (!serving || serving.amount == null || serving.amount === "") return "";
+  const amount = Number(serving.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return "";
+  const unit = SERVING_UNITS.some((u) => u.id === serving.unit) ? serving.unit : "g";
+  const pretty = Number.isInteger(amount) ? String(amount) : String(Math.round(amount * 100) / 100);
+  return `${pretty} ${unit}`;
+}
+
+/** Volume servings contribute to water estimate (mL). Mass units do not. */
+export function servingToWaterMl(serving) {
+  if (!serving) return 0;
+  const amount = Number(serving.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  if (serving.unit === "mL") return Math.round(amount);
+  if (serving.unit === "L") return Math.round(amount * 1000);
+  return 0;
+}
+
+/**
+ * Normalize user-entered or stored meal nutrition into emptyTotals shape.
+ * Accepts flat micros or nested micros object.
+ */
+export function normalizeMealNutrition(input = {}) {
+  const out = emptyTotals();
+  const n = (v) => {
+    const x = Number(v);
+    return Number.isFinite(x) && x >= 0 ? x : 0;
+  };
+  out.calories = n(input.calories);
+  out.protein = n(input.protein);
+  out.carbs = n(input.carbs);
+  out.fat = n(input.fat);
+  out.fiber = n(input.fiber);
+  out.waterMl = n(input.waterMl);
+  const micros = input.micros && typeof input.micros === "object" ? input.micros : input;
+  for (const k of Object.keys(out.micros)) {
+    out.micros[k] = n(micros[k] ?? input[k]);
+  }
+  return out;
+}
+
+/** True when the meal has user-authored nutrition totals */
+export function hasUserNutrition(meal) {
+  return !!(meal && meal.nutrition && (meal.nutritionSource === "user" || meal.customNutrition));
+}
+
 export function nutritionForMeal(meal) {
+  if (hasUserNutrition(meal)) {
+    const total = normalizeMealNutrition(meal.nutrition);
+    // Prefer explicit water; else derive from liquid serving size
+    if (!total.waterMl && meal.serving) {
+      total.waterMl = servingToWaterMl(meal.serving);
+    }
+    return roundTotals(total);
+  }
   const total = emptyTotals();
   const parts = [meal?.base, ...(meal?.ingredients || [])].filter(Boolean);
   for (const p of parts) addNutrition(total, nutritionForItem(p));
@@ -118,6 +181,23 @@ export function nutritionForMeal(meal) {
 
 /** Per-ingredient nutrition for a meal (totals + breakdown) */
 export function nutritionBreakdownForMeal(meal) {
+  if (hasUserNutrition(meal)) {
+    const total = nutritionForMeal(meal);
+    return {
+      total,
+      userDefined: true,
+      byIngredient: [
+        {
+          id: meal.id || "custom-total",
+          name: `${meal.title || meal.name || "Custom meal"} (user nutrition)`,
+          category: "custom",
+          icon: "🥤",
+          role: "custom",
+          nutrition: total,
+        },
+      ],
+    };
+  }
   const parts = [meal?.base, ...(meal?.ingredients || [])].filter(Boolean);
   const byIngredient = parts.map((item) => ({
     id: item.id,
@@ -131,6 +211,7 @@ export function nutritionBreakdownForMeal(meal) {
   for (const row of byIngredient) addNutrition(total, row.nutrition);
   return {
     total: roundTotals(total),
+    userDefined: false,
     byIngredient: byIngredient.map((row) => ({
       ...row,
       nutrition: {

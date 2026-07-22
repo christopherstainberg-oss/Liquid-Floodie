@@ -57,10 +57,46 @@ function shuffle(rng, arr) {
   return a;
 }
 
+const SERVING_UNIT_IDS = new Set(["g", "oz", "mL", "L"]);
+
+/**
+ * Normalize optional serving size: amount + unit (g | oz | mL | L).
+ */
+export function normalizeServing(serving) {
+  if (!serving || serving.amount == null || serving.amount === "") return null;
+  const amount = Number(serving.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Serving size must be a positive number.");
+  }
+  const unit = String(serving.unit || "g");
+  if (!SERVING_UNIT_IDS.has(unit)) {
+    throw new Error("Serving unit must be Grams (g), Ounces (oz), Milliliters (mL), or Liters (L).");
+  }
+  return { amount: Math.round(amount * 1000) / 1000, unit };
+}
+
 /**
  * Build a named custom liquid meal from a liquid base + 2–5 whole-food add-ins.
+ * Optional: serving size (g/oz/mL/L), total calories, macros, and micronutrients.
+ *
+ * @param {object} opts
+ * @param {string} opts.name
+ * @param {object} opts.base
+ * @param {object[]} opts.ingredients
+ * @param {object} [opts.restrictions]
+ * @param {{ amount: number, unit: 'g'|'oz'|'mL'|'L' }} [opts.serving]
+ * @param {object} [opts.nutrition] - user totals: calories, protein, carbs, fat, fiber, waterMl, micros{}
+ * @param {'user'|'estimated'|null} [opts.nutritionSource]
  */
-export function buildCustomMeal({ name, base, ingredients, restrictions = { milk: true, gluten: true } }) {
+export function buildCustomMeal({
+  name,
+  base,
+  ingredients,
+  restrictions = { milk: true, gluten: true },
+  serving = null,
+  nutrition = null,
+  nutritionSource = null,
+} = {}) {
   const title = String(name || "").trim();
   if (!title) throw new Error("Give your meal a name.");
   if (!base || base.category !== "base") throw new Error("Pick a liquid base (water, broth, or juice).");
@@ -77,7 +113,8 @@ export function buildCustomMeal({ name, base, ingredients, restrictions = { milk
     if (!item.wholeFood) throw new Error(`“${item.name}” is not a whole food.`);
   }
   const steps = buildMealSteps(base, adds);
-  return {
+  const servingNorm = serving ? normalizeServing(serving) : null;
+  const meal = {
     id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     title,
     name: title,
@@ -91,6 +128,13 @@ export function buildCustomMeal({ name, base, ingredients, restrictions = { milk
       .map((i) => i.name.toLowerCase())
       .join(", ")}. Whole foods only — respects your dietary restrictions.`,
   };
+  if (servingNorm) meal.serving = servingNorm;
+  if (nutrition && typeof nutrition === "object") {
+    meal.nutrition = nutrition;
+    meal.nutritionSource = nutritionSource === "estimated" ? "estimated" : "user";
+    meal.customNutrition = meal.nutritionSource === "user";
+  }
+  return meal;
 }
 
 /** Insert a custom meal into a plan day slot (creates a minimal plan if needed) */

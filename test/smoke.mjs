@@ -107,6 +107,69 @@ try {
 }
 assert(failedCustom, "custom meal requires a name");
 
+const customWithNut = engine.buildCustomMeal({
+  name: "User Macro Meal",
+  base,
+  ingredients: adds,
+  restrictions: { milk: true, gluten: true },
+  serving: { amount: 400, unit: "mL" },
+  nutrition: {
+    calories: 450,
+    protein: 25,
+    carbs: 40,
+    fat: 15,
+    fiber: 10,
+    micros: {
+      vitaminA: 100,
+      vitaminC: 50,
+      vitaminK: 20,
+      potassium: 600,
+      calcium: 200,
+      iron: 4,
+      magnesium: 80,
+      folate: 120,
+    },
+  },
+  nutritionSource: "user",
+});
+assert(customWithNut.serving?.amount === 400 && customWithNut.serving?.unit === "mL", "custom meal stores serving mL");
+assert(customWithNut.nutritionSource === "user", "custom meal marks user nutrition");
+assert(customWithNut.customNutrition === true, "customNutrition flag set");
+const customNut = nutrition.nutritionForMeal(customWithNut);
+assert(customNut.calories === 450, `user calories used (got ${customNut.calories})`);
+assert(customNut.protein === 25, "user protein used");
+assert(customNut.micros.vitaminC === 50, "user micros used");
+assert(customNut.waterMl === 400, "water from mL serving when not set");
+assert(nutrition.formatServing(customWithNut.serving) === "400 mL", "formatServing mL");
+
+const ozMeal = engine.buildCustomMeal({
+  name: "Oz Serving",
+  base,
+  ingredients: adds,
+  serving: { amount: 12, unit: "oz" },
+  nutrition: { calories: 200, protein: 10, carbs: 20, fat: 5, fiber: 3, micros: {} },
+  nutritionSource: "user",
+});
+assert(ozMeal.serving?.unit === "oz", "serving unit ounces");
+assert(nutrition.formatServing(ozMeal.serving) === "12 oz", "formatServing oz");
+
+let badServing = false;
+try {
+  engine.buildCustomMeal({
+    name: "Bad Unit",
+    base,
+    ingredients: adds,
+    serving: { amount: 1, unit: "cups" },
+  });
+} catch {
+  badServing = true;
+}
+assert(badServing, "invalid serving unit rejected");
+
+const userBreak = nutrition.nutritionBreakdownForMeal(customWithNut);
+assert(userBreak.userDefined === true, "breakdown marks userDefined");
+assert(userBreak.total.calories === 450, "user breakdown total calories");
+
 const rotatedOne = engine.rotateSingleMeal(plan, INGREDIENT_DB, { day: 1, mealIndex: 0 });
 assert(rotatedOne.plan[0].meals[0].id !== plan.plan[0].meals[0].id, "single meal rotate changes meal");
 assert(rotatedOne.plan[0].meals.length === plan.plan[0].meals.length, "single rotate keeps meal count");

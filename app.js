@@ -55,6 +55,10 @@ import {
   nutritionBreakdownForMeal,
   DEFAULT_GOALS,
   MICRO_LABELS,
+  SERVING_UNITS,
+  formatServing,
+  normalizeMealNutrition,
+  hasUserNutrition,
   todayKey,
 } from "./src/nutrition.js";
 
@@ -741,11 +745,13 @@ function renderMealCard(m, opts = {}) {
   const n = nutritionForMeal(m);
   const steps = m.steps?.length ? m.steps : buildMealSteps(m.base, m.ingredients);
   const breakdown = nutritionBreakdownForMeal(m);
+  const servingLabel = formatServing(m.serving);
+  const userNut = hasUserNutrition(m);
   const ingNutRows = breakdown.byIngredient
     .map(
       (row) =>
         `<tr>
-          <td>${row.icon || "•"} ${escapeHtml(row.name)}${row.role === "base" ? " <em>(base)</em>" : ""}</td>
+          <td>${row.icon || "•"} ${escapeHtml(row.name)}${row.role === "base" ? " <em>(base)</em>" : row.role === "custom" ? " <em>(totals)</em>" : ""}</td>
           <td class="num">${row.nutrition.calories}</td>
           <td class="num">${row.nutrition.protein}g</td>
           <td class="num">${row.nutrition.carbs}g</td>
@@ -758,6 +764,8 @@ function renderMealCard(m, opts = {}) {
     showRotate && dayNum != null
       ? `<button type="button" class="btn" data-rotate-day="${dayNum}" data-rotate-meal="${mealIndex}">Rotate This Meal</button>`
       : "";
+  const servingMeta = servingLabel ? `Serving ${escapeHtml(servingLabel)} · ` : "";
+  const sourceMeta = userNut ? " · user nutrition" : "";
   return `
     <div class="meal">
       <div class="meal-head">
@@ -768,16 +776,16 @@ function renderMealCard(m, opts = {}) {
         ${rotateBtn ? `<div class="meal-actions">${rotateBtn}</div>` : ""}
       </div>
       <p class="hint">${escapeHtml(m.blurb)}</p>
-      <p class="meta">~${n.calories} kcal · P ${n.protein}g · C ${n.carbs}g · F ${n.fat}g · Fiber ${n.fiber}g</p>
+      <p class="meta">${servingMeta}~${n.calories} kcal · P ${n.protein}g · C ${n.carbs}g · F ${n.fat}g · Fiber ${n.fiber}g${sourceMeta}</p>
       <div class="meal-ing">
         <span class="chip">${iconFor(m.base)} ${escapeHtml(m.base.name)} <em>(base)</em></span>
         ${(m.ingredients || []).map((i) => `<span class="chip">${iconFor(i)} ${escapeHtml(i.name)}</span>`).join("")}
       </div>
       <details class="meal-nut-breakdown">
-        <summary>Ingredient Nutrient Breakdown</summary>
+        <summary>${userNut ? "Meal Nutrition (User Entered)" : "Ingredient Nutrient Breakdown"}</summary>
         <div class="table-wrap">
           <table class="nutrient-table">
-            <thead><tr><th>Ingredient</th><th>Cal</th><th>Protein</th><th>Carbs</th><th>Fat</th><th>Fiber</th></tr></thead>
+            <thead><tr><th>${userNut ? "Source" : "Ingredient"}</th><th>Cal</th><th>Protein</th><th>Carbs</th><th>Fat</th><th>Fiber</th></tr></thead>
             <tbody>${ingNutRows}</tbody>
             <tfoot><tr><th>Meal Total</th><th class="num">${n.calories}</th><th class="num">${n.protein}g</th><th class="num">${n.carbs}g</th><th class="num">${n.fat}g</th><th class="num">${n.fiber}g</th></tr></tfoot>
           </table>
@@ -810,6 +818,9 @@ function formatBig(n) {
 /* ---------- Weekly plan ---------- */
 /** In-progress custom meal builder selection */
 let customDraft = { baseId: null, ingredientIds: [] };
+
+const CUSTOM_MACRO_IDS = ["customCal", "customProtein", "customCarbs", "customFat", "customFiber"];
+const CUSTOM_MICRO_KEYS = Object.keys(MICRO_LABELS);
 
 function bindPlan() {
   $("#rotatePlanBtn").onclick = () => {
@@ -866,6 +877,20 @@ function bindCustomMealBuilder() {
     renderCustomIngSearch($("#customIngSearch").value);
   });
 
+  $("#estimateCustomNutritionBtn")?.addEventListener("click", () => {
+    try {
+      fillCustomNutritionFromEstimate();
+      toast("Nutrition estimated from ingredients");
+    } catch (e) {
+      toast(e.message || "Add a base and 2–5 ingredients first");
+    }
+  });
+
+  $("#clearCustomNutritionBtn")?.addEventListener("click", () => {
+    clearCustomNutritionFields();
+    toast("Nutrition fields cleared");
+  });
+
   $("#saveCustomMealBtn")?.addEventListener("click", () => {
     try {
       const meal = saveCustomMealFromDraft();
@@ -902,6 +927,113 @@ function bindCustomMealBuilder() {
 
   renderCustomIngSelected();
   renderCustomMealsList();
+}
+
+function parseOptionalNumber(el) {
+  if (!el) return null;
+  const raw = String(el.value ?? "").trim();
+  if (raw === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) throw new Error("Nutrition values must be zero or positive numbers.");
+  return n;
+}
+
+function readCustomServingFromForm() {
+  const amountEl = $("#customServingAmount");
+  const unitEl = $("#customServingUnit");
+  const raw = String(amountEl?.value ?? "").trim();
+  if (!raw) return null;
+  const amount = Number(raw);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Serving size amount must be a positive number.");
+  }
+  const unit = unitEl?.value || "mL";
+  if (!SERVING_UNITS.some((u) => u.id === unit)) {
+    throw new Error("Choose a serving unit: g, oz, mL, or L.");
+  }
+  return { amount, unit };
+}
+
+/** Collect macros/micros/calories; returns { nutrition, nutritionSource } or null if all empty */
+function readCustomNutritionFromForm() {
+  const cal = parseOptionalNumber($("#customCal"));
+  const protein = parseOptionalNumber($("#customProtein"));
+  const carbs = parseOptionalNumber($("#customCarbs"));
+  const fat = parseOptionalNumber($("#customFat"));
+  const fiber = parseOptionalNumber($("#customFiber"));
+  const micros = {};
+  let anyMicro = false;
+  for (const k of CUSTOM_MICRO_KEYS) {
+    const v = parseOptionalNumber($(`#customMicro_${k}`));
+    if (v != null) {
+      micros[k] = v;
+      anyMicro = true;
+    }
+  }
+  const any =
+    cal != null || protein != null || carbs != null || fat != null || fiber != null || anyMicro;
+  if (!any) return null;
+  const nutrition = normalizeMealNutrition({
+    calories: cal ?? 0,
+    protein: protein ?? 0,
+    carbs: carbs ?? 0,
+    fat: fat ?? 0,
+    fiber: fiber ?? 0,
+    micros,
+  });
+  return { nutrition, nutritionSource: "user" };
+}
+
+function writeCustomNutritionToForm(n) {
+  if (!n) return;
+  if ($("#customCal")) $("#customCal").value = n.calories ?? "";
+  if ($("#customProtein")) $("#customProtein").value = n.protein ?? "";
+  if ($("#customCarbs")) $("#customCarbs").value = n.carbs ?? "";
+  if ($("#customFat")) $("#customFat").value = n.fat ?? "";
+  if ($("#customFiber")) $("#customFiber").value = n.fiber ?? "";
+  for (const k of CUSTOM_MICRO_KEYS) {
+    const el = $(`#customMicro_${k}`);
+    if (el) el.value = n.micros?.[k] ?? "";
+  }
+}
+
+function clearCustomNutritionFields() {
+  for (const id of CUSTOM_MACRO_IDS) {
+    if ($(`#${id}`)) $(`#${id}`).value = "";
+  }
+  for (const k of CUSTOM_MICRO_KEYS) {
+    const el = $(`#customMicro_${k}`);
+    if (el) el.value = "";
+  }
+}
+
+function writeCustomServingToForm(serving) {
+  if ($("#customServingAmount")) {
+    $("#customServingAmount").value = serving?.amount != null ? serving.amount : "";
+  }
+  if ($("#customServingUnit")) {
+    $("#customServingUnit").value = serving?.unit || "mL";
+  }
+}
+
+function draftMealForEstimate() {
+  const base = db.ingredients.find((i) => i.id === ($("#customMealBase")?.value || customDraft.baseId));
+  const ingredients = customDraft.ingredientIds
+    .map((id) => db.ingredients.find((i) => i.id === id))
+    .filter(Boolean);
+  if (!base || base.category !== "base") throw new Error("Pick a liquid base first.");
+  if (ingredients.length < 2) throw new Error("Add at least 2 ingredients to estimate.");
+  return { base, ingredients, title: "estimate" };
+}
+
+function fillCustomNutritionFromEstimate() {
+  const draft = draftMealForEstimate();
+  const n = nutritionForMeal({
+    base: draft.base,
+    ingredients: draft.ingredients,
+    nutritionSource: null,
+  });
+  writeCustomNutritionToForm(n);
 }
 
 function populateCustomBaseSelect() {
@@ -1000,11 +1132,16 @@ function saveCustomMealFromDraft() {
   const ingredients = customDraft.ingredientIds
     .map((id) => db.ingredients.find((i) => i.id === id))
     .filter(Boolean);
+  const serving = readCustomServingFromForm();
+  const nut = readCustomNutritionFromForm();
   const meal = buildCustomMeal({
     name: $("#customMealName")?.value,
     base,
     ingredients,
     restrictions: state.restrictions || { milk: true, gluten: true },
+    serving,
+    nutrition: nut?.nutrition || null,
+    nutritionSource: nut?.nutritionSource || null,
   });
   state.customMeals = state.customMeals || [];
   state.customMeals.unshift(meal);
@@ -1020,6 +1157,8 @@ function clearCustomDraft(clearName) {
   if (clearName && $("#customMealName")) $("#customMealName").value = "";
   if ($("#customIngSearch")) $("#customIngSearch").value = "";
   if ($("#customIngResults")) $("#customIngResults").innerHTML = "";
+  writeCustomServingToForm(null);
+  clearCustomNutritionFields();
   populateCustomBaseSelect();
   renderCustomIngSelected();
 }
@@ -1035,10 +1174,15 @@ function renderCustomMealsList() {
   box.innerHTML = list
     .map((m) => {
       const ings = (m.ingredients || []).map((i) => i.name).join(", ");
+      const n = nutritionForMeal(m);
+      const serving = formatServing(m.serving);
+      const nutTag = hasUserNutrition(m) ? " · user nutrition" : "";
+      const servingLine = serving ? `Serving ${escapeHtml(serving)} · ` : "";
       return `
       <div class="custom-meal-saved">
         <h4>${escapeHtml(m.title || m.name)}</h4>
         <p class="meta">${iconFor(m.base)} ${escapeHtml(m.base?.name || "Base")} · ${escapeHtml(ings)}</p>
+        <p class="meta">${servingLine}~${n.calories} kcal · P ${n.protein}g · C ${n.carbs}g · F ${n.fat}g · Fiber ${n.fiber}g${nutTag}</p>
         <div class="btn-row">
           <button type="button" class="btn" data-use-custom="${m.id}">Add To Day 1</button>
           <button type="button" class="btn ghost" data-load-custom="${m.id}">Load In Builder</button>
@@ -1070,6 +1214,12 @@ function renderCustomMealsList() {
       customDraft.ingredientIds = (meal.ingredients || []).map((i) => i.id);
       populateCustomBaseSelect();
       renderCustomIngSelected();
+      writeCustomServingToForm(meal.serving || null);
+      if (meal.nutrition && (meal.nutritionSource === "user" || meal.customNutrition)) {
+        writeCustomNutritionToForm(normalizeMealNutrition(meal.nutrition));
+      } else {
+        clearCustomNutritionFields();
+      }
       toast("Loaded into builder");
     }
     if (del) {
