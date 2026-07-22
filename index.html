@@ -67,9 +67,9 @@
   </nav>
 
   <main id="main" class="wrap" tabindex="-1">
-    <!-- HOME: Daily Meals open; other cards collapsed by default -->
+    <!-- HOME: Home, Today’s Snapshot, and Daily Meals open; other cards collapsed by default -->
     <section class="panel active" id="panel-home" aria-labelledby="home-title">
-      <details class="card home-fold">
+      <details class="card home-fold" open>
         <summary class="home-fold-summary">
           <span class="home-fold-title" id="home-title">Home</span>
           <span class="home-fold-hint meta">Welcome &amp; quick links</span>
@@ -83,7 +83,7 @@
         </div>
       </details>
 
-      <details class="card home-fold">
+      <details class="card home-fold" open>
         <summary class="home-fold-summary">
           <span class="home-fold-title">Today’s Snapshot</span>
           <span class="home-fold-hint meta">Calories &amp; macros</span>
@@ -125,7 +125,7 @@
       </details>
     </section>
 
-    <!-- WEEKLY MEAL PLAN — all cards collapsed by default -->
+    <!-- WEEKLY MEAL PLAN — This Week’s Plan open under controls; other cards collapsed -->
     <section class="panel" id="panel-plan" aria-labelledby="plan-title" hidden>
       <details class="card home-fold">
         <summary class="home-fold-summary">
@@ -173,6 +173,16 @@
           <button type="button" class="btn ghost" id="sharePlanBtn">Share Plan</button>
         </div>
         <p class="meta">Weekly and daily meal plans are created automatically in the background.</p>
+        </div>
+      </details>
+
+      <details class="card home-fold" open>
+        <summary class="home-fold-summary">
+          <span class="home-fold-title">This Week’s Plan</span>
+          <span class="home-fold-hint meta">Days, meals, rotate</span>
+        </summary>
+        <div class="home-fold-body">
+          <div id="planOutput" aria-live="polite"></div>
         </div>
       </details>
 
@@ -308,16 +318,6 @@
         </summary>
         <div class="home-fold-body">
           <div id="customMealsList" aria-live="polite"></div>
-        </div>
-      </details>
-
-      <details class="card home-fold">
-        <summary class="home-fold-summary">
-          <span class="home-fold-title">This Week’s Plan</span>
-          <span class="home-fold-hint meta">Days, meals, rotate</span>
-        </summary>
-        <div class="home-fold-body">
-          <div id="planOutput" aria-live="polite"></div>
         </div>
       </details>
     </section>
@@ -625,7 +625,7 @@
 
     </section>
 
-    <!-- SETTINGS — all cards collapsed; gamification removed; feedback/logs/security hidden -->
+    <!-- SETTINGS — Account open; other cards collapsed; gamification removed; feedback/logs/security hidden -->
     <section class="panel" id="panel-settings" aria-labelledby="settings-title" hidden>
       <details class="card home-fold">
         <summary class="home-fold-summary">
@@ -653,7 +653,7 @@
         </div>
       </details>
 
-      <details class="card home-fold">
+      <details class="card home-fold" open>
         <summary class="home-fold-summary">
           <span class="home-fold-title">Account</span>
           <span class="home-fold-hint meta">Profile, avatar, security</span>
@@ -784,25 +784,25 @@
       <button type="button" class="modal-close hide" id="authClose" aria-label="Close">×</button>
       <div class="auth-brand">
         <img src="icons/icon.svg" width="56" height="56" alt="" class="auth-logo" />
-        <h2 id="authTitle">Create Account</h2>
-        <p class="auth-tagline">Create an account or log in to use LiquidFloodie. Accounts stay on this device.</p>
+        <h2 id="authTitle">Login</h2>
+        <p class="auth-tagline">Log in or create an account to use LiquidFloodie. Accounts stay on this device.</p>
       </div>
 
       <div class="auth-tabs" role="tablist">
-        <button type="button" class="auth-tab" data-auth="login" id="authTabLogin">Login</button>
-        <button type="button" class="auth-tab active" data-auth="register" id="authTabRegister">Create Account</button>
+        <button type="button" class="auth-tab active" data-auth="login" id="authTabLogin">Login</button>
+        <button type="button" class="auth-tab" data-auth="register" id="authTabRegister">Create Account</button>
         <button type="button" class="auth-tab" data-auth="recover" id="authTabRecover">Password Recovery</button>
       </div>
 
       <p class="auth-error" id="authError" role="alert" hidden></p>
 
-      <form id="formLogin" class="auth-form hide" novalidate>
+      <form id="formLogin" class="auth-form" novalidate>
         <label>Email <input type="email" id="loginEmail" required autocomplete="username" /></label>
         <label>Password <input type="password" id="loginPassword" required autocomplete="current-password" minlength="8" /></label>
         <button type="submit" class="btn primary" id="loginSubmitBtn">Sign In</button>
       </form>
 
-      <form id="formRegister" class="auth-form" novalidate>
+      <form id="formRegister" class="auth-form hide" novalidate>
         <label>Email <input type="email" id="regEmail" required autocomplete="username" /></label>
         <label>Display Name <input type="text" id="regName" maxlength="40" autocomplete="nickname" /></label>
         <label>Password <input type="password" id="regPassword" required autocomplete="new-password" minlength="8" /></label>

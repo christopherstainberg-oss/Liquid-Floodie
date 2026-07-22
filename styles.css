@@ -378,7 +378,7 @@ label textarea:focus {
   text-align: left;
 }
 
-/* Foldable cards (Home Daily Meals open; Plan / Nutrients / Settings all collapsed) */
+/* Foldable cards (Home + Snapshot + Daily Meals open; Plan: This Week’s Plan open; Settings: Account open) */
 .home-fold {
   padding: 0;
   overflow: hidden;

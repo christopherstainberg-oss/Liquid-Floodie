@@ -1,5 +1,5 @@
 /* LiquidFloodie service worker — offline shell; prefer network for app code after deploy */
-const SHELL_VERSION = "v22-recover-fix";
+const SHELL_VERSION = "v23-login-folds";
 const SHELL_CACHE = "liquidfloodie-shell-" + SHELL_VERSION;
 const SHELL_ASSETS = [
   "./",

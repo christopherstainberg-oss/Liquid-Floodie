@@ -154,7 +154,7 @@ async function boot() {
   currentUser = getCurrentUser();
   if (!canUseApp()) {
     lockAppForAuth();
-    openAuth("register", { required: true });
+    openAuth("login", { required: true });
   }
 
   try {
@@ -227,7 +227,7 @@ async function boot() {
     }
   } else {
     lockAppForAuth();
-    openAuth("register", { required: true });
+    openAuth("login", { required: true });
   }
 
   registerSW();
@@ -352,7 +352,7 @@ function showTab(name) {
   if (!name) return;
   if (!canUseApp()) {
     lockAppForAuth();
-    openAuth("register", { required: true });
+    openAuth("login", { required: true });
     return;
   }
   document.querySelectorAll("#tabNav .tab").forEach((b) => {
@@ -711,7 +711,7 @@ function openAuth(which, opts = {}) {
       which === "recover"
         ? "Enter your email, load your security question, answer it, then set a new password."
         : required
-          ? "Create an account or log in to use LiquidFloodie. Accounts stay on this device."
+          ? "Log in or create an account to use LiquidFloodie. Accounts stay on this device."
           : "Whole-Food Liquid Meals While Maintaining Dietary Restrictions";
     if (!cryptoReady()) {
       base += " (Secure hashing fallback active — prefer HTTPS when available.)";
@@ -1993,17 +1993,10 @@ function renderGroceryCostSummary(totals) {
     </div>`;
 }
 
-/** Escape HTML then bold every "WinCo" / "Winco" occurrence for display */
-function boldWinCoHtml(text) {
-  const safe = escapeHtml(text ?? "");
-  return safe.replace(/\bWinCo\b/gi, "<strong>WinCo</strong>");
-}
-
 function storeNavBlockHtml(nav, { primary = false } = {}) {
   if (!nav) return "";
   const label = nav.storeLabel || nav.storeId || "Store";
-  const isWinco = /winco/i.test(label) || nav.storeId === "winco";
-  const title = isWinco ? "<strong>WinCo</strong>" : escapeHtml(label);
+  const title = escapeHtml(label);
   const steps = Array.isArray(nav.detailedSteps) && nav.detailedSteps.length
     ? nav.detailedSteps
     : nav.instructions
@@ -2013,7 +2006,7 @@ function storeNavBlockHtml(nav, { primary = false } = {}) {
         : [];
   const stepsHtml = steps.length
     ? `<ol class="grocery-nav-steps">
-        ${steps.map((s) => `<li>${boldWinCoHtml(s)}</li>`).join("")}
+        ${steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}
       </ol>`
     : "";
   return `
@@ -2034,7 +2027,7 @@ function groceryItemHtml(it, storeId) {
   const otherId = storeId === "walmart" ? "winco" : "walmart";
   const secondary = it.nav?.[otherId] || {};
   const cost = it.cost || {};
-  // Always list WinCo block with bold "WinCo"; preferred store first
+  // Preferred store first; both Walmart and WinCo blocks listed (WinCo is not bolded)
   const blocks =
     storeId === "winco"
       ? storeNavBlockHtml(primary, { primary: true }) + storeNavBlockHtml(secondary, { primary: false })

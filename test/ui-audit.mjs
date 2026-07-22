@@ -139,10 +139,17 @@ await sleep(2000);
 const authInit = await page.evaluate(() => ({
   locked: document.body.classList.contains("auth-locked"),
   modalHide: document.getElementById("authModal")?.classList.contains("hide"),
-  regVisible: !document.getElementById("formRegister")?.classList.contains("hide"),
+  loginVisible: !document.getElementById("formLogin")?.classList.contains("hide"),
+  loginTabActive: document
+    .querySelector('.auth-tab[data-auth="login"]')
+    ?.classList.contains("active"),
+  title: document.getElementById("authTitle")?.textContent,
 }));
 if (!authInit.locked || authInit.modalHide) fail("Auth gate should lock app on first visit", authInit);
 else pass("Auth gate locks app on first visit");
+if (authInit.loginVisible && authInit.loginTabActive && /login/i.test(authInit.title || "")) {
+  pass("Auth gate opens on Login screen");
+} else fail("Auth gate should show Login screen on visit", authInit);
 
 // Tabs
 for (const t of ["login", "register", "recover"]) {
@@ -404,8 +411,8 @@ if (groceryCbs > 0) {
   if (detailUi.storeBlocks >= 2 && detailUi.hasStepList && detailUi.hasWalmartWord && detailUi.hasWincoWord) {
     pass("Each grocery item shows Walmart + WinCo detailed find instructions");
   } else fail("Detailed dual-store instructions missing", detailUi);
-  if (detailUi.wincoStrong >= 1) pass("WinCo is bold under grocery items");
-  else fail("WinCo not bolded in grocery item HTML", detailUi);
+  if (detailUi.wincoStrong === 0) pass("WinCo is not bold under grocery items");
+  else fail("WinCo should not be bolded in grocery item HTML", detailUi);
   if (navSample.hasCost && navSample.hasTotal) pass("Grocery shows item cost + approximate total");
   else fail("Grocery cost display missing", navSample);
 
@@ -649,34 +656,42 @@ if (!removedSettings.game && !removedSettings.feedback && !removedSettings.logs 
   pass("Gamification, feedback, logging, and security/handoff removed from Settings");
 } else fail("Expected Settings sections still present", removedSettings);
 
-// Collapsed cards on Plan / Nutrients / Settings
-const foldCheck = await page.evaluate(() => {
-  const countClosed = (sel) =>
-    [...document.querySelectorAll(`${sel} details.home-fold`)].filter((d) => !d.open).length;
-  const countAll = (sel) => document.querySelectorAll(`${sel} details.home-fold`).length;
+// Default open/closed folds for Home / Plan / Nutrients / Settings
+const foldState = await page.evaluate(() => {
+  const folds = (sel) =>
+    [...document.querySelectorAll(`${sel} details.home-fold`)].map((d) => ({
+      title: (d.querySelector(".home-fold-title")?.textContent || "").trim(),
+      open: !!d.open,
+    }));
+  const openTitles = (sel) => folds(sel).filter((f) => f.open).map((f) => f.title);
+  const underWeekly = () => {
+    const list = [...document.querySelectorAll("#panel-plan details.home-fold")];
+    const titles = list.map((d) => (d.querySelector(".home-fold-title")?.textContent || "").trim());
+    const iWeekly = titles.findIndex((t) => /weekly meal plan/i.test(t));
+    const iThisWeek = titles.findIndex((t) => /this week/i.test(t));
+    return iWeekly >= 0 && iThisWeek === iWeekly + 1;
+  };
   return {
-    planAll: countAll("#panel-plan"),
-    planClosed: countClosed("#panel-plan"),
-    nutAll: countAll("#panel-nutrients"),
-    nutClosed: countClosed("#panel-nutrients"),
-    setAll: countAll("#panel-settings"),
-    setClosed: countClosed("#panel-settings"),
+    homeOpen: openTitles("#panel-home"),
+    planOpen: openTitles("#panel-plan"),
+    thisWeekUnderWeekly: underWeekly(),
+    nutClosed: folds("#panel-nutrients").every((f) => !f.open),
+    nutCount: folds("#panel-nutrients").length,
+    accountOpen: folds("#panel-settings").some((f) => /account/i.test(f.title) && f.open),
+    setCount: folds("#panel-settings").length,
+    planCount: folds("#panel-plan").length,
   };
 });
-// After opening settings folds for avatar, re-check plan/nutrients only
-const foldPlanNut = await page.evaluate(() => {
-  const closed = (sel) =>
-    [...document.querySelectorAll(`${sel} details.home-fold`)].every((d) => !d.open);
-  const n = (sel) => document.querySelectorAll(`${sel} details.home-fold`).length;
-  return {
-    planOk: n("#panel-plan") >= 3 && closed("#panel-plan"),
-    nutOk: n("#panel-nutrients") >= 6 && closed("#panel-nutrients"),
-    setHasFolds: n("#panel-settings") >= 5,
-  };
-});
-if (foldPlanNut.planOk && foldPlanNut.nutOk && foldPlanNut.setHasFolds) {
-  pass("Plan, Nutrients, and Settings use collapsed fold cards");
-} else fail("Fold cards incomplete", { foldCheck, foldPlanNut });
+const homeOk =
+  foldState.homeOpen.some((t) => /^Home$/i.test(t)) &&
+  foldState.homeOpen.some((t) => /snapshot/i.test(t));
+const planOk =
+  foldState.planCount >= 3 &&
+  foldState.thisWeekUnderWeekly &&
+  foldState.planOpen.some((t) => /this week/i.test(t));
+if (homeOk && planOk && foldState.nutClosed && foldState.nutCount >= 6 && foldState.accountOpen && foldState.setCount >= 5) {
+  pass("Home, Plan, and Settings use expected open/closed fold defaults");
+} else fail("Fold card defaults incorrect", foldState);
 
 // Export still available
 await mustClick("#exportAllBtn", "Export backup");
