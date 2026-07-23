@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gravatar.com https://secure.gravatar.com; connect-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gravatar.com https://secure.gravatar.com https://gravatar.com https://*.gravatar.com https://*.wp.com; connect-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#c2410c" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#431407" media="(prefers-color-scheme: dark)" />
@@ -32,7 +32,7 @@
       </div>
       <div class="header-actions">
         <button type="button" class="user-chip" id="accountBtn" aria-label="Account">
-          <img id="headerAvatar" class="avatar" width="32" height="32" alt="" />
+          <img id="headerAvatar" class="avatar" width="32" height="32" alt="" decoding="async" referrerpolicy="no-referrer" />
           <span id="headerUserLabel">Sign in</span>
         </button>
         <button type="button" class="icon-btn" id="searchToggle" aria-label="Quick search" title="Quick search">⌕</button>
@@ -326,15 +326,15 @@
     <section class="panel" id="panel-grocery" aria-labelledby="grocery-title" hidden>
       <div class="card">
         <h2 id="grocery-title">Grocery List</h2>
-        <p class="hint">Built from your weekly meal plan. Each item includes aisle navigation (Walmart &amp; WinCo), side of aisle, depth along the aisle, comparable unit cost, and line total. Costs are approximate educational estimates.</p>
+        <p class="hint">Built from your weekly meal plan. Each item includes aisle navigation for Walmart &amp; WinCo in <strong>Medford, OR</strong> (side of aisle, depth, comparable unit cost, and line total). Aisle numbers are educational approximations — confirm in the Walmart app or with WinCo staff after remodels.</p>
         <p class="meta" id="groceryRestrictionsStatus" aria-live="polite"></p>
 
         <div class="form-grid grocery-controls">
           <label>
             Shop path for
             <select id="groceryStoreSelect">
-              <option value="walmart">Walmart</option>
-              <option value="winco">WinCo</option>
+              <option value="walmart">Walmart (Medford)</option>
+              <option value="winco">WinCo (Medford)</option>
             </select>
           </label>
           <label>

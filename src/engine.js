@@ -1012,7 +1012,16 @@ export function thirdPartyLinks(query) {
   const q = encodeURIComponent(query || "whole food smoothie ingredients");
   return [
     { name: "Walmart search", url: `https://www.walmart.com/search?q=${q}`, kind: "grocery" },
-    { name: "WinCo store finder", url: `https://www.wincofoods.com/stores`, kind: "grocery" },
+    {
+      name: "Walmart South Medford #2069",
+      url: "https://www.walmart.com/store/2069-medford-or",
+      kind: "grocery",
+    },
+    {
+      name: "WinCo Medford #44",
+      url: "https://www.wincofoods.com/stores/winco-foods-medford-44/4734",
+      kind: "grocery",
+    },
     { name: "Instacart search", url: `https://www.instacart.com/store/search/${q}`, kind: "grocery" },
     { name: "Amazon Fresh search", url: `https://www.amazon.com/s?k=${q}`, kind: "grocery" },
     { name: "Allrecipes search", url: `https://www.allrecipes.com/search?q=${q}`, kind: "recipe" },

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780" role="img" aria-labelledby="title desc">
-  <title id="title">Typical Walmart Supercenter Grocery Layout Map</title>
-  <desc id="desc">Educational floor plan of a typical Walmart Supercenter grocery area showing perimeter departments, numbered center aisles, left/right side guidance, and shopping path. Local store layouts vary.</desc>
+  <title id="title">Walmart Medford Supercenter Grocery Layout Map</title>
+  <desc id="desc">Educational floor plan for Medford, OR Walmart Supercenters (#2069 Center Dr &amp; #5839 Crater Lake Hwy) showing perimeter departments, numbered center aisles, left/right side guidance, and shopping path. Confirm exact bays in the Walmart app after remodels.</desc>
 
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
@@ -52,8 +52,8 @@
 
   <!-- Background -->
   <rect width="1200" height="780" fill="url(#bg)"/>
-  <text x="40" y="42" class="title">Typical Walmart Supercenter — Grocery Layout Map</text>
-  <text x="40" y="64" class="subtitle">Educational shopping-path guide · Layouts vary by remodel &amp; location · Not an official Walmart floor plan</text>
+  <text x="40" y="42" class="title">Walmart Medford Supercenter — Grocery Layout Map</text>
+  <text x="40" y="64" class="subtitle">Medford OR · #2069 Center Dr &amp; #5839 Crater Lake Hwy · Educational guide · Confirm bays in Walmart app · Not an official floor plan</text>
 
   <!-- Outer store shell -->
   <rect x="40" y="90" width="900" height="560" class="wall" filter="url(#shadow)" rx="12"/>
@@ -209,7 +209,7 @@
   <text x="980" y="615" class="legend">BACK = far / wall end</text>
 
   <!-- Footer notes -->
-  <text x="40" y="730" class="note">LiquidFloodie grocery list maps categories to these zones (e.g. fruit→Produce, spices→A6–7, nuts→A15–16, bases→A12–14 or dairy coolers).</text>
-  <text x="40" y="750" class="note">Use the Walmart app aisle locator for your exact store — aisle numbers shift after remodels. This map is a typical Supercenter grocery pattern.</text>
-  <text x="40" y="770" class="note">© Educational diagram for LiquidFloodie · Not affiliated with Walmart Inc.</text>
+  <text x="40" y="730" class="note">LiquidFloodie Medford list maps: fruit/veg/herbs→Produce · spices→A6–7 · beans/broth→A8–9 · nuts→A15–16 · bases→A12–14 or dairy coolers · oats→A1–2.</text>
+  <text x="40" y="750" class="note">Use the Walmart app aisle locator for store #2069 or #5839 — aisle numbers shift after remodels. Pacific NW Supercenter grocery pattern.</text>
+  <text x="40" y="770" class="note">© Educational diagram for LiquidFloodie · Medford, OR · Not affiliated with Walmart Inc.</text>
 </svg>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780" role="img" aria-labelledby="title desc">
-  <title id="title">Typical WinCo Foods Grocery Layout Map</title>
-  <desc id="desc">Educational floor plan of a typical WinCo Foods grocery store highlighting bulk bins, produce, numbered aisles, left/right side guidance, and a value shopping path. Local store layouts vary.</desc>
+  <title id="title">WinCo Foods Medford (#44) Grocery Layout Map</title>
+  <desc id="desc">Educational floor plan for WinCo Foods Medford #44 (251 E Barnett Rd) highlighting bulk bins, produce, numbered aisles, left/right side guidance, and a value shopping path. Confirm bins with staff after remodels.</desc>
 
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
@@ -55,8 +55,8 @@
   </defs>
 
   <rect width="1200" height="780" fill="url(#bg)"/>
-  <text x="40" y="40" class="title">Typical WinCo Foods — Grocery Layout Map</text>
-  <text x="40" y="60" class="subtitle">Educational shopping-path guide · Bulk-first value store · Layouts vary by remodel &amp; location · Not an official WinCo floor plan</text>
+  <text x="40" y="40" class="title">WinCo Foods Medford (#44) — Grocery Layout Map</text>
+  <text x="40" y="60" class="subtitle">251 E Barnett Rd, Medford OR · Bulk-first · Bag-your-own · Educational guide · Not an official WinCo floor plan</text>
 
   <!-- Outer shell -->
   <rect x="40" y="88" width="900" height="562" class="wall" filter="url(#shadow)" rx="12"/>
@@ -202,7 +202,7 @@
   <text x="980" y="605" class="legend">FRONT = entrance end</text>
   <text x="980" y="625" class="legend">HALFWAY = mid-run</text>
 
-  <text x="40" y="730" class="note">LiquidFloodie maps WinCo categories to bulk + aisle zones (nuts/grains/beans/spices → Bulk; bases → A10–12; produce → Produce).</text>
+  <text x="40" y="730" class="note">LiquidFloodie Medford WinCo map: nuts/grains/beans/spices → Bulk first; bases → A10–12; produce → Produce; broth/condiments → A8–9. Confirm bulk PLUs at the desk.</text>
   <text x="40" y="750" class="note">Bring reusable bags · scoop bulk with a clean bag &amp; write PLU · ask associates for remodel changes. Educational diagram only.</text>
   <text x="40" y="770" class="note">© Educational diagram for LiquidFloodie · Not affiliated with WinCo Foods, Inc.</text>
 </svg>

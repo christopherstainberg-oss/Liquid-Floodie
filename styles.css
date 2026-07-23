@@ -1266,12 +1266,27 @@ label.check {
   white-space: nowrap;
 }
 .avatar {
+  display: block;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--line);
   flex-shrink: 0;
+  /* Avoid flash of broken-image icon / alt text inside the circle */
+  overflow: hidden;
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
 }
-.avatar.lg { width: 72px; height: 72px; }
+.avatar.lg {
+  width: 72px;
+  height: 72px;
+}
+.user-chip .avatar {
+  width: 32px;
+  height: 32px;
+}
 
 /* Account panel (Settings) — matches Job Scheduling option cards */
 .account-panel {

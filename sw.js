@@ -1,5 +1,5 @@
 /* LiquidFloodie service worker — offline shell; prefer network for app code after deploy */
-const SHELL_VERSION = "v24-auth-login-fix";
+const SHELL_VERSION = "v25-gravatar-fix";
 const SHELL_CACHE = "liquidfloodie-shell-" + SHELL_VERSION;
 const SHELL_ASSETS = [
   "./",
@@ -49,6 +49,9 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
+  // Never intercept cross-origin (Gravatar CDNs, etc.) — let the browser load images natively
+  if (url.origin !== self.location.origin) return;
+
   if (req.mode === "navigate" || isAppShell(url)) {
     e.respondWith(
       fetch(req)
@@ -69,8 +72,8 @@ self.addEventListener("fetch", (e) => {
       if (cached) return cached;
       return fetch(req).then((res) => {
         const copy = res.clone();
-        if (res.ok && url.origin === self.location.origin) {
-          caches.open(SHELL_CACHE).then((c) => c.put(req, copy));
+        if (res.ok) {
+          caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {});
         }
         return res;
       });

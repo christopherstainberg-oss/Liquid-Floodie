@@ -50,7 +50,8 @@ import {
   getRecoveryQuestion,
   listSecurityQuestions,
   updateProfile,
-  resolveAvatar,
+  applyAvatarToImg,
+  localAvatarDataUrl,
   cryptoReady,
 } from "./src/auth.js";
 import { iconFor } from "./src/icons.js";
@@ -71,6 +72,7 @@ import {
 } from "./src/nutrition.js";
 import {
   NAV_TECHNIQUES,
+  NAV_DATA_VERSION,
   storeMeta,
   sortGroceryByStorePath,
   groceryCostTotals,
@@ -775,13 +777,18 @@ function openAuth(which, opts = {}) {
 
 async function refreshUserChrome() {
   currentUser = getCurrentUser();
-  const avatar = await resolveAvatar(currentUser, 64);
-  if ($("#headerAvatar")) {
-    $("#headerAvatar").src = avatar;
-    $("#headerAvatar").alt = currentUser ? currentUser.displayName : "Sign In";
+  const avatarImg = $("#headerAvatar");
+  if (avatarImg) {
+    await applyAvatarToImg(avatarImg, currentUser, 64);
   }
   if ($("#headerUserLabel")) {
     $("#headerUserLabel").textContent = currentUser ? currentUser.displayName : "Sign In";
+  }
+  if ($("#accountBtn")) {
+    $("#accountBtn").setAttribute(
+      "aria-label",
+      currentUser ? `Account: ${currentUser.displayName}` : "Account: Sign In"
+    );
   }
 }
 
@@ -1775,13 +1782,15 @@ function ensureGroceryEnriched(list) {
   if (!list?.items?.length) return list;
   let changed = false;
   list.items = list.items.map((it) => {
+    const versionOk = it.navVersion === NAV_DATA_VERSION;
     const hasDetail =
+      versionOk &&
       it.nav?.walmart?.detailedSteps?.length >= 3 &&
       it.nav?.winco?.detailedSteps?.length >= 3 &&
       it.cost?.typical != null;
     if (hasDetail) return it;
     changed = true;
-    // Preserve checked flag across re-enrich
+    // Preserve checked flag across re-enrich (also when aisle data version bumps)
     const next = enrichGroceryItem(it, it.qty || 1);
     next.checked = !!it.checked;
     return next;
@@ -1858,13 +1867,15 @@ function groceryText(list) {
   const items = sortedGroceryItems(enriched.items, storeId, grocerySortMode());
   const totals = enriched.costTotals || groceryCostTotals(items);
   const header = [
-    "LiquidFloodie Grocery List",
-    `Store path: ${store.label}`,
+    "LiquidFloodie Grocery List — Medford, OR",
+    `Store path: ${store.label}${store.primaryAddress ? ` · ${store.primaryAddress}` : ""}`,
     `Approx. total: ${formatMoney(totals.typical)} (range ${formatMoney(totals.min)} – ${formatMoney(totals.max)})`,
   ];
   if (labels.length) header.push(`Dietary restrictions: ${labels.join(" · ")}`);
   header.push("");
-  header.push("Tips: perimeter first · one-way aisle path · cold items last · WinCo bulk for nuts/grains");
+  header.push(
+    "Tips: perimeter first · one-way aisle path · cold items last · WinCo bulk for nuts/grains · confirm Walmart bays in-app (#2069 / #5839)"
+  );
   header.push("");
   for (const it of items) {
     const nav = it.nav?.[storeId] || {};
@@ -1910,31 +1921,31 @@ const GROCERY_MAPS = {
   walmart: {
     illustrated: {
       src: "walmart-grocery-layout-illustrated.jpg",
-      alt: "Illustrated Walmart Supercenter grocery floor plan with one-way shopping path from produce through center aisles to dairy and frozen",
+      alt: "Illustrated Medford Walmart Supercenter grocery floor plan with one-way shopping path from produce through center aisles to dairy and frozen",
     },
     diagram: {
       src: "walmart-grocery-layout-map.png",
       svg: "walmart-grocery-layout-map.svg",
-      alt: "Labeled Walmart Supercenter grocery layout diagram with aisle numbers, left/right sides, and department zones",
+      alt: "Labeled Medford Walmart Supercenter grocery layout diagram with aisle numbers, left/right sides, and department zones",
     },
-    title: "Walmart Supercenter grocery layout map",
+    title: "Walmart Medford Supercenter — grocery layout map",
     caption:
-      "Match each list item’s aisle · left/right · front/halfway/back to this map. Start at Produce (①), walk center aisles low→high, dairy & frozen last.",
+      "Medford #2069 (Center Dr) & #5839 (Crater Lake Hwy). Match each item’s aisle · left/right · front/halfway/back. Start at Produce (①), walk center aisles low→high, dairy & frozen last. Confirm bays in the Walmart app.",
     brand: "Walmart",
   },
   winco: {
     illustrated: {
       src: "winco-grocery-layout-illustrated.jpg",
-      alt: "Illustrated WinCo Foods grocery floor plan highlighting bulk bins, produce, center aisles, dairy, and frozen with a value shopping path",
+      alt: "Illustrated WinCo Foods Medford grocery floor plan highlighting bulk bins, produce, center aisles, dairy, and frozen with a value shopping path",
     },
     diagram: {
       src: "winco-grocery-layout-map.png",
       svg: "winco-grocery-layout-map.svg",
-      alt: "Labeled WinCo Foods grocery layout diagram with bulk foods, aisle numbers, left/right sides, and department zones",
+      alt: "Labeled WinCo Foods Medford grocery layout diagram with bulk foods, aisle numbers, left/right sides, and department zones",
     },
-    title: "WinCo Foods grocery layout map",
+    title: "WinCo Foods Medford (#44 Barnett Rd) — grocery layout map",
     caption:
-      "WinCo path: Produce (①) → Bulk nuts/grains/spices (②) → center aisles → beverages → dairy → frozen last. Match each item’s aisle · side · depth tags to this map.",
+      "WinCo #44 path: Produce (①) → Bulk nuts/grains/spices (②) → center aisles → beverages → dairy → frozen last. Match each item’s aisle · side · depth tags. Bring bags (bag-your-own).",
     brand: "WinCo",
   },
 };
@@ -2093,8 +2104,10 @@ function renderGrocery() {
   if ($("#groceryStoreSelect")) $("#groceryStoreSelect").value = storeId;
   if ($("#grocerySortSelect")) $("#grocerySortSelect").value = sortMode;
   if ($("#groceryStoreNote")) {
+    const addr = meta.primaryAddress ? ` · ${meta.primaryAddress}` : "";
     $("#groceryStoreNote").textContent =
       (meta.note || "") +
+      addr +
       (storeId === "walmart"
         ? " Use the Walmart layout map below with each item’s aisle · side · depth tags."
         : " Use the WinCo layout map below — hit bulk early for nuts, grains, beans, and spices.");
@@ -2712,8 +2725,9 @@ async function renderAccountPanel() {
     $("#openLoginBtn").onclick = () => openAuth("register", { required: true });
     return;
   }
-  const avatar = await resolveAvatar(currentUser, 96);
   const mode = currentUser.avatarMode === "local" ? "local" : "gravatar";
+  // Placeholder first; applyAvatarToImg fills Gravatar with host fallbacks
+  const placeholder = localAvatarDataUrl(currentUser.displayName || currentUser.email || "user", 96);
   box.innerHTML = `
     <div class="account-panel">
       <div class="account-status-card">
@@ -2721,7 +2735,7 @@ async function renderAccountPanel() {
       </div>
 
       <div class="account-profile-card">
-        <img class="avatar lg" src="${avatar}" alt="" width="72" height="72" />
+        <img id="accountAvatarImg" class="avatar lg" src="${placeholder}" alt="" width="72" height="72" decoding="async" referrerpolicy="no-referrer" />
         <div class="account-profile-text">
           <p class="account-name">${escapeHtml(currentUser.displayName || "User")}</p>
           <p class="meta account-email">${escapeHtml(currentUser.email || "")}</p>
@@ -2730,7 +2744,7 @@ async function renderAccountPanel() {
 
       <div class="account-section">
         <h4 class="account-section-title">Profile picture</h4>
-        <p class="hint">Choose how your avatar is shown in the header. Gravatar uses the email hash; Local uses a built-in placeholder.</p>
+        <p class="hint">Choose how your avatar is shown in the header. Gravatar loads from gravatar.com for this email (SHA-256 + classic MD5). If the network blocks it, a local initials avatar is used. Local mode never leaves this device.</p>
         <div class="account-options" role="radiogroup" aria-label="Avatar source">
           <label class="check schedule-option account-option">
             <input type="radio" name="avatarMode" value="gravatar" ${mode === "gravatar" ? "checked" : ""} />
@@ -2768,6 +2782,8 @@ async function renderAccountPanel() {
         </div>
       </div>
     </div>`;
+  await applyAvatarToImg($("#accountAvatarImg"), currentUser, 96);
+
   $("#saveAvatarBtn").onclick = async () => {
     const next = $$('input[name="avatarMode"]').find((r) => r.checked)?.value || "gravatar";
     currentUser = updateProfile({ avatarMode: next });

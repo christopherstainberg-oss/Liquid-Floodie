@@ -302,17 +302,153 @@ function normalizeEmail(email) {
     .toLowerCase();
 }
 
-/** Gravatar URL (gravicon) from email */
-export async function gravatarUrl(email, size = 96) {
-  const e = normalizeEmail(email);
-  if (!e) return null;
-  const hash = await sha256Hex(e); // Gravatar now accepts SHA-256
-  // MD5 is classic Gravatar; many CDNs still work with sha256 on newer endpoints.
-  // Use d=identicon for privacy-friendly default.
-  return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=identicon&r=pg`;
+/**
+ * Classic Gravatar still indexes many profiles by MD5(email).
+ * Web Crypto has no MD5 — small pure-JS implementation (email hashes only).
+ */
+function md5Hex(str) {
+  function cmn(q, a, b, x, s, t) {
+    a = (a + q + x + t) | 0;
+    return (((a << s) | (a >>> (32 - s))) + b) | 0;
+  }
+  function ff(a, b, c, d, x, s, t) {
+    return cmn((b & c) | (~b & d), a, b, x, s, t);
+  }
+  function gg(a, b, c, d, x, s, t) {
+    return cmn((b & d) | (c & ~d), a, b, x, s, t);
+  }
+  function hh(a, b, c, d, x, s, t) {
+    return cmn(b ^ c ^ d, a, b, x, s, t);
+  }
+  function ii(a, b, c, d, x, s, t) {
+    return cmn(c ^ (b | ~d), a, b, x, s, t);
+  }
+  function md5blks(s) {
+    const n = s.length;
+    const n16 = (((n + 8) >>> 6) + 1) * 16;
+    const blks = new Array(n16).fill(0);
+    for (let i = 0; i < n; i++) blks[i >> 2] |= s.charCodeAt(i) << ((i % 4) * 8);
+    blks[n >> 2] |= 0x80 << ((n % 4) * 8);
+    blks[n16 - 2] = n * 8;
+    return blks;
+  }
+  // UTF-8 encode for non-ASCII emails
+  const utf8 = unescape(encodeURIComponent(String(str || "")));
+  const x = md5blks(utf8);
+  let a = 1732584193;
+  let b = -271733879;
+  let c = -1732584194;
+  let d = 271733878;
+  for (let i = 0; i < x.length; i += 16) {
+    const oa = a;
+    const ob = b;
+    const oc = c;
+    const od = d;
+    a = ff(a, b, c, d, x[i], 7, -680876936);
+    d = ff(d, a, b, c, x[i + 1], 12, -389564586);
+    c = ff(c, d, a, b, x[i + 2], 17, 606105819);
+    b = ff(b, c, d, a, x[i + 3], 22, -1044525330);
+    a = ff(a, b, c, d, x[i + 4], 7, -176418897);
+    d = ff(d, a, b, c, x[i + 5], 12, 1200080426);
+    c = ff(c, d, a, b, x[i + 6], 17, -1473231341);
+    b = ff(b, c, d, a, x[i + 7], 22, -45705983);
+    a = ff(a, b, c, d, x[i + 8], 7, 1770035416);
+    d = ff(d, a, b, c, x[i + 9], 12, -1958414417);
+    c = ff(c, d, a, b, x[i + 10], 17, -42063);
+    b = ff(b, c, d, a, x[i + 11], 22, -1990404162);
+    a = ff(a, b, c, d, x[i + 12], 7, 1804603682);
+    d = ff(d, a, b, c, x[i + 13], 12, -40341101);
+    c = ff(c, d, a, b, x[i + 14], 17, -1502002290);
+    b = ff(b, c, d, a, x[i + 15], 22, 1236535329);
+    a = gg(a, b, c, d, x[i + 1], 5, -165796510);
+    d = gg(d, a, b, c, x[i + 6], 9, -1069501632);
+    c = gg(c, d, a, b, x[i + 11], 14, 643717713);
+    b = gg(b, c, d, a, x[i], 20, -373897302);
+    a = gg(a, b, c, d, x[i + 5], 5, -701558691);
+    d = gg(d, a, b, c, x[i + 10], 9, 38016083);
+    c = gg(c, d, a, b, x[i + 15], 14, -660478335);
+    b = gg(b, c, d, a, x[i + 4], 20, -405537848);
+    a = gg(a, b, c, d, x[i + 9], 5, 568446438);
+    d = gg(d, a, b, c, x[i + 14], 9, -1019803690);
+    c = gg(c, d, a, b, x[i + 3], 14, -187363961);
+    b = gg(b, c, d, a, x[i + 8], 20, 1163531501);
+    a = gg(a, b, c, d, x[i + 13], 5, -1444681467);
+    d = gg(d, a, b, c, x[i + 2], 9, -51403784);
+    c = gg(c, d, a, b, x[i + 7], 14, 1735328473);
+    b = gg(b, c, d, a, x[i + 12], 20, -1926607734);
+    a = hh(a, b, c, d, x[i + 5], 4, -378558);
+    d = hh(d, a, b, c, x[i + 8], 11, -2022574463);
+    c = hh(c, d, a, b, x[i + 11], 16, 1839030562);
+    b = hh(b, c, d, a, x[i + 14], 23, -35309556);
+    a = hh(a, b, c, d, x[i + 1], 4, -1530992060);
+    d = hh(d, a, b, c, x[i + 4], 11, 1272893353);
+    c = hh(c, d, a, b, x[i + 7], 16, -155497632);
+    b = hh(b, c, d, a, x[i + 10], 23, -1094730640);
+    a = hh(a, b, c, d, x[i + 13], 4, 681279174);
+    d = hh(d, a, b, c, x[i], 11, -358537222);
+    c = hh(c, d, a, b, x[i + 3], 16, -722521979);
+    b = hh(b, c, d, a, x[i + 6], 23, 76029189);
+    a = hh(a, b, c, d, x[i + 9], 4, -640364487);
+    d = hh(d, a, b, c, x[i + 12], 11, -421815835);
+    c = hh(c, d, a, b, x[i + 15], 16, 530742520);
+    b = hh(b, c, d, a, x[i + 2], 23, -995338651);
+    a = ii(a, b, c, d, x[i], 6, -198630844);
+    d = ii(d, a, b, c, x[i + 7], 10, 1126891415);
+    c = ii(c, d, a, b, x[i + 14], 15, -1416354905);
+    b = ii(b, c, d, a, x[i + 5], 21, -57434055);
+    a = ii(a, b, c, d, x[i + 12], 6, 1700485571);
+    d = ii(d, a, b, c, x[i + 3], 10, -1894986606);
+    c = ii(c, d, a, b, x[i + 10], 15, -1051523);
+    b = ii(b, c, d, a, x[i + 1], 21, -2054922799);
+    a = ii(a, b, c, d, x[i + 8], 6, 1873313359);
+    d = ii(d, a, b, c, x[i + 15], 10, -30611744);
+    c = ii(c, d, a, b, x[i + 6], 15, -1560198380);
+    b = ii(b, c, d, a, x[i + 13], 21, 1309151649);
+    a = ii(a, b, c, d, x[i + 4], 6, -145523070);
+    d = ii(d, a, b, c, x[i + 11], 10, -1120210379);
+    c = ii(c, d, a, b, x[i + 2], 15, 718787259);
+    b = ii(b, c, d, a, x[i + 9], 21, -343485551);
+    a = (a + oa) | 0;
+    b = (b + ob) | 0;
+    c = (c + oc) | 0;
+    d = (d + od) | 0;
+  }
+  function rhex(n) {
+    let s = "";
+    for (let j = 0; j < 4; j++) s += ((n >> (j * 8)) & 255).toString(16).padStart(2, "0");
+    return s;
+  }
+  return rhex(a) + rhex(b) + rhex(c) + rhex(d);
 }
 
-/** Local identicon fallback when offline / CSP blocks remote */
+/**
+ * Build Gravatar image URLs for an email.
+ * Prefer SHA-256 (current Gravatar docs); also include classic MD5 for older profiles.
+ * Hosts chosen to match CSP allow-list (www + secure).
+ */
+export async function gravatarUrls(email, size = 96) {
+  const e = normalizeEmail(email);
+  if (!e) return [];
+  const s = Math.max(1, Math.min(2048, Number(size) || 96));
+  const sha = await sha256Hex(e);
+  const md5 = md5Hex(e);
+  // d=identicon so empty profiles still show a pattern (never transparent blank)
+  const q = `s=${s}&d=identicon&r=pg`;
+  return [
+    `https://www.gravatar.com/avatar/${sha}?${q}`,
+    `https://secure.gravatar.com/avatar/${sha}?${q}`,
+    `https://www.gravatar.com/avatar/${md5}?${q}`,
+    `https://secure.gravatar.com/avatar/${md5}?${q}`,
+  ];
+}
+
+/** @deprecated use gravatarUrls — kept for callers expecting a single URL */
+export async function gravatarUrl(email, size = 96) {
+  const urls = await gravatarUrls(email, size);
+  return urls[0] || null;
+}
+
+/** Local identicon fallback when offline / CSP blocks remote / load error */
 export function localAvatarDataUrl(seed, size = 96) {
   // Simple deterministic SVG avatar
   let h = 0;
@@ -320,11 +456,16 @@ export function localAvatarDataUrl(seed, size = 96) {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   const c1 = `hsl(${h % 360} 55% 42%)`;
   const c2 = `hsl(${(h + 80) % 360} 60% 55%)`;
+  // Initials from seed (email local-part or display name)
+  const base = s.includes("@") ? s.split("@")[0] : s;
+  const parts = base.replace(/[^a-zA-Z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  let initials = "?";
+  if (parts.length >= 2) initials = (parts[0][0] + parts[1][0]).toUpperCase();
+  else if (parts[0]) initials = parts[0].slice(0, 2).toUpperCase();
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 96 96">
     <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
     <rect width="96" height="96" rx="48" fill="url(#g)"/>
-    <circle cx="48" cy="38" r="16" fill="#fff" opacity="0.9"/>
-    <ellipse cx="48" cy="78" rx="28" ry="22" fill="#fff" opacity="0.9"/>
+    <text x="48" y="48" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI, system-ui, sans-serif" font-size="34" font-weight="700" fill="#fff">${initials}</text>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
@@ -569,12 +710,73 @@ function publicUser(u) {
   };
 }
 
+/**
+ * Resolve avatar src for a user.
+ * Returns a remote Gravatar URL (or local data URL). Callers should wire
+ * img.onerror → local fallback via applyAvatarToImg / localAvatarDataUrl.
+ */
 export async function resolveAvatar(user, size = 80) {
   if (!user) return localAvatarDataUrl("guest", size);
-  if (user.avatarMode === "local") return localAvatarDataUrl(user.email || user.id, size);
+  const seed = user.displayName || user.email || user.id || "guest";
+  if (user.avatarMode === "local") return localAvatarDataUrl(seed, size);
   try {
-    return (await gravatarUrl(user.email, size)) || localAvatarDataUrl(user.email, size);
+    // Prefer local immediately when clearly offline
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      return localAvatarDataUrl(seed, size);
+    }
+    const urls = await gravatarUrls(user.email, size);
+    return urls[0] || localAvatarDataUrl(seed, size);
   } catch {
-    return localAvatarDataUrl(user.email || user.id, size);
+    return localAvatarDataUrl(seed, size);
   }
+}
+
+/**
+ * Apply avatar to an <img>, with multi-host Gravatar fallback then local SVG.
+ * Avoids blank brown circles when CSP/CDN/network blocks the first URL.
+ * @param {HTMLImageElement|null} img
+ * @param {object|null} user
+ * @param {number} [size]
+ */
+export async function applyAvatarToImg(img, user, size = 80) {
+  if (!img) return;
+  const seed = user?.displayName || user?.email || user?.id || "guest";
+  const local = localAvatarDataUrl(seed, size);
+  // Decorative: parent control has the accessible name (avoids "Chris…" in broken-img box)
+  img.alt = "";
+  img.decoding = "async";
+  img.referrerPolicy = "no-referrer";
+  img.setAttribute("width", String(size > 48 ? 72 : 32));
+  img.setAttribute("height", String(size > 48 ? 72 : 32));
+
+  if (!user || user.avatarMode === "local") {
+    img.onerror = null;
+    img.src = local;
+    return;
+  }
+
+  let candidates = [];
+  try {
+    candidates = await gravatarUrls(user.email, size);
+  } catch {
+    candidates = [];
+  }
+  if (!candidates.length) {
+    img.onerror = null;
+    img.src = local;
+    return;
+  }
+
+  let idx = 0;
+  const tryNext = () => {
+    if (idx >= candidates.length) {
+      img.onerror = null;
+      img.src = local;
+      return;
+    }
+    const url = candidates[idx++];
+    img.onerror = tryNext;
+    img.src = url;
+  };
+  tryNext();
 }
